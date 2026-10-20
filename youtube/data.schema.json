@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "YoutubeData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["channel", "videos"],
+  "properties": {
+    "channel": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "videos": {
+      "description": "Dernières vidéos, de la plus récente à la plus ancienne.",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "published", "short", "views"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]{11}$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "published": { "type": "string", "format": "date-time" },
+          "short": { "type": "boolean" },
+          "views": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    }
+  }
+}

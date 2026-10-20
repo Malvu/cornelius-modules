@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "YoutubeConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["channelId", "shorts"],
+  "properties": {
+    "channelId": {
+      "title": "Identifiant de la chaîne",
+      "description": "Commence par « UC » : sur la chaîne, « Plus » puis « Partager la chaîne » puis « Copier l’ID de la chaîne ».",
+      "type": "string",
+      "pattern": "^UC[A-Za-z0-9_-]{22}$",
+      "maxLength": 24,
+      "examples": ["UCjED9uS41ioeFuPfbR-OBlw"]
+    },
+    "shorts": {
+      "title": "Compter les Shorts",
+      "description": "Désactivé : seules les vidéos longues sont annoncées.",
+      "type": "boolean"
+    }
+  }
+}
