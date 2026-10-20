@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VacancesData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["zone", "region", "vacations", "publicHolidays"],
+  "properties": {
+    "zone": { "type": "string", "pattern": "^(A|B|C|Corse)$" },
+    "region": { "type": "string", "pattern": "^(metropole|alsace-moselle)$" },
+    "vacations": {
+      "description": "Périodes à venir ou en cours, par date de début. end est le jour de la rentrée.",
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "start", "end"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "start": { "type": "string", "format": "date" },
+          "end": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "publicHolidays": {
+      "description": "Jours fériés à venir, aujourd'hui compris, par date.",
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "name"],
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 }
+        }
+      }
+    }
+  }
+}

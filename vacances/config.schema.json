@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VacancesConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["zone", "region"],
+  "properties": {
+    "zone": {
+      "title": "Zone scolaire",
+      "description": "A, B, C ou Corse. Paris, Créteil, Versailles, Montpellier et Toulouse sont en zone C.",
+      "type": "string",
+      "pattern": "^(A|B|C|Corse)$",
+      "maxLength": 5,
+      "examples": ["C"]
+    },
+    "region": {
+      "title": "Jours fériés",
+      "description": "metropole, ou alsace-moselle pour ajouter le Vendredi saint et le 26 décembre.",
+      "type": "string",
+      "pattern": "^(metropole|alsace-moselle)$",
+      "maxLength": 14,
+      "examples": ["metropole"]
+    }
+  }
+}

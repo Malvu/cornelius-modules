@@ -9,7 +9,7 @@ GitHub/
 ├── cornelius/            le miroir : cœur et modules livrés (addons/)
 └── cornelius-modules/    ce dépôt : un dossier par module
     ├── _template/        le gabarit, jamais chargé
-    ├── parking/          un module (exemple)
+    ├── vacances/         un module : vacances scolaires et jours fériés
     └── docs/             tutoriel et référence du contrat
 ```
 
@@ -43,7 +43,7 @@ Si un module demande une version de Cornelius plus récente que celle installée
 
 | Module | Ce qu’il fait | Jeton | Fiche |
 | --- | --- | --- | --- |
-| _Aucun pour l’instant._ | Le premier se crée à partir du [gabarit](_template/). | | |
+| Vacances et jours fériés | En vacances ou pas, prochaines vacances scolaires de la zone, prochain jour férié | aucun | [vacances](vacances/README.md) |
 
 ## Créer un module
 
