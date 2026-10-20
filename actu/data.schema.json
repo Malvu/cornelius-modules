@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActuData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["feed", "items"],
+  "properties": {
+    "feed": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "items": {
+      "description": "Titres dans l’ordre du journal.",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "published", "summary"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "published": { "type": ["string", "null"], "format": "date-time" },
+          "summary": { "type": ["string", "null"], "maxLength": 300 }
+        }
+      }
+    }
+  }
+}

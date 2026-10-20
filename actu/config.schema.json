@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ActuConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["url", "count"],
+  "properties": {
+    "url": {
+      "title": "Adresse du flux RSS",
+      "description": "Le flux d’un journal, au format RSS ou Atom, à son adresse finale (sans redirection).",
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://",
+      "maxLength": 300,
+      "examples": ["https://www.franceinfo.fr/titres.rss"]
+    },
+    "count": {
+      "title": "Titres annoncés",
+      "description": "Nombre de titres lus et affichés, dans l’ordre du journal.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    }
+  }
+}
