@@ -33,6 +33,7 @@ Cornelius livre ses modules de base avec lui. Ce dépôt accueille **tous les au
 
 | Module | Ce qu’il fait | Jeton | Fiche |
 | --- | --- | --- | --- |
+| 🗑️ **Poubelles** | Quel bac sortir et quand, d’après le calendrier de la commune écrit en toutes lettres ; rappel la veille au soir | aucun | [poubelles](poubelles/README.md) |
 | 🏖️ **Vacances et jours fériés** | En vacances ou pas, prochaines vacances scolaires de la zone, prochain jour férié ; affichage permanent possible | aucun | [vacances](vacances/README.md) |
 
 Livrés avec Cornelius, et donc absents d’ici : Heure, Météo, Transports, Ragator. Voir [Les modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md) dans Cornelius.

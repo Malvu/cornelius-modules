@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PoubellesData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bins", "veille"],
+  "properties": {
+    "bins": {
+      "description": "Bacs ramassés et leur règle, déjà comprise : les dates se calculent à la présentation.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "weekdays", "parity", "ordinals"],
+        "properties": {
+          "kind": { "enum": ["menager", "emballages", "verre", "biodechets", "vegetaux"] },
+          "weekdays": {
+            "description": "1 = lundi … 7 = dimanche.",
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 7,
+            "uniqueItems": true,
+            "items": { "type": "integer", "minimum": 1, "maximum": 7 }
+          },
+          "parity": { "enum": ["all", "even", "odd"] },
+          "ordinals": {
+            "description": "Rang du jour dans le mois (1 à 5, -1 pour le dernier) ; vide : chaque semaine.",
+            "type": "array",
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": { "type": "integer", "enum": [-1, 1, 2, 3, 4, 5] }
+          }
+        }
+      }
+    },
+    "veille": { "type": "boolean" }
+  }
+}

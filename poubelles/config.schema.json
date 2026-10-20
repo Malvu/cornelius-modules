@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PoubellesConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["menager", "emballages", "verre", "biodechets", "vegetaux", "veille"],
+  "properties": {
+    "menager": {
+      "title": "Ordures ménagères",
+      "description": "Jours de ramassage, par exemple « lundi et jeudi ». Vide : pas de ramassage.",
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "examples": ["lundi et jeudi"]
+    },
+    "emballages": {
+      "title": "Emballages et papiers",
+      "description": "Par exemple « mercredi semaines paires ». Vide : pas de ramassage.",
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "examples": ["mercredi semaines paires"]
+    },
+    "verre": {
+      "title": "Verre",
+      "description": "Par exemple « 1er vendredi du mois ». Vide : pas de ramassage.",
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "examples": ["1er vendredi du mois"]
+    },
+    "biodechets": {
+      "title": "Biodéchets",
+      "description": "Restes alimentaires. Vide : pas de ramassage.",
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "examples": ["mardi"]
+    },
+    "vegetaux": {
+      "title": "Déchets verts",
+      "description": "Par exemple « dernier lundi du mois ». Vide : pas de ramassage.",
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "examples": ["dernier lundi du mois"]
+    },
+    "veille": {
+      "title": "Sortir la veille au soir",
+      "description": "Le ramassage passe tôt : Cornelius le rappelle dès la veille au soir.",
+      "type": "boolean"
+    }
+  }
+}
