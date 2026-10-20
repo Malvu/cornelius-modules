@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EphemerideData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["day", "events"],
+  "properties": {
+    "day": {
+      "description": "Jour de l’année des événements, au format MM-JJ.",
+      "type": "string",
+      "pattern": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["year", "text", "page"],
+        "properties": {
+          "year": { "type": "integer", "minimum": -5000, "maximum": 3000 },
+          "text": { "type": "string", "minLength": 1, "maxLength": 400 },
+          "page": { "type": ["string", "null"], "maxLength": 200 }
+        }
+      }
+    }
+  }
+}

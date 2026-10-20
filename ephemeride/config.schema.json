@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EphemerideConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["count"],
+  "properties": {
+    "count": {
+      "title": "Événements sur la carte",
+      "description": "Le plus marquant est dit à voix haute, les autres s’affichent dessous.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    }
+  }
+}
