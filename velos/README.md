@@ -7,7 +7,7 @@ Le module Vélos en libre-service dit combien de vélos et de places libres comp
 - Il répond à « il reste des vélos à la station ? » ou « je peux reposer mon vélo ? » : « Station Benjamin Godard - Victor Hugo : 20 vélos, dont 4 électriques et 14 places libres. »
 - La carte « Vélos · Vélib’ Métropole » donne le nombre de vélos, puis les mécaniques, les électriques et les places libres, quand le réseau les distingue.
 - Une station fermée est annoncée comme telle, jamais comme « aucun vélo ».
-- L’état est relu au plus toutes les deux minutes.
+- L’état est relu au plus toutes les deux minutes. Les stations d’un même réseau et la recherche partagent les fichiers du réseau : plusieurs sources ne multiplient pas les requêtes.
 
 ## Source
 

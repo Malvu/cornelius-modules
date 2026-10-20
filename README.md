@@ -5,7 +5,7 @@
 <h3>De nouvelles informations pour le miroir, mises à jour sans toucher à Cornelius.</h3>
 
 <p>
-  <a href="https://github.com/lfpoulain/Cornelius"><img alt="Pour Cornelius 0.1 ou plus récent" src="https://img.shields.io/badge/Cornelius-%E2%89%A5%200.1-3fb7a3?style=flat-square" /></a>
+  <a href="https://github.com/lfpoulain/Cornelius"><img alt="Pour Cornelius 0.2 ou plus récent" src="https://img.shields.io/badge/Cornelius-%E2%89%A5%200.2-3fb7a3?style=flat-square" /></a>
   <img alt="Contrat des modules v1" src="https://img.shields.io/badge/contrat-apiVersion%201-3fb7a3?style=flat-square" />
   <img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-3fb7a3?style=flat-square&logo=nodedotjs&logoColor=white" />
   <img alt="En français" src="https://img.shields.io/badge/langue-fran%C3%A7ais-3fb7a3?style=flat-square" />
@@ -33,10 +33,10 @@ Cornelius livre ses modules de base avec lui. Ce dépôt accueille **tous les au
 
 | Module | Ce qu’il fait | Jeton | Fiche |
 | --- | --- | --- | --- |
-| 📅 **Agenda** | Les prochains rendez-vous d’un agenda Google, iCloud ou Outlook, par son lien iCal privé, répétitions comprises | lien privé | [agenda](agenda/README.md) |
+| 📅 **Agenda** | Les prochains rendez-vous d’un agenda Google, iCloud ou Outlook, par son lien iCal privé, répétitions comprises ; « et samedi ? » se demande à la voix | lien privé | [agenda](agenda/README.md) |
 | 📜 **Éphéméride** | Ce qui s’est passé un jour comme aujourd’hui, l’anniversaire le plus rond d’abord, d’après Wikipédia | aucun | [ephemeride](ephemeride/README.md) |
-| 🗑️ **Poubelles** | Quel bac sortir et quand, d’après le calendrier de la commune écrit en toutes lettres ; rappel la veille au soir | aucun | [poubelles](poubelles/README.md) |
-| ⛽ **Prix des carburants** | Les prix d’une station-service, carburant principal d’abord ; station trouvée par commune ou code postal | aucun | [carburants](carburants/README.md) |
+| 🗑️ **Poubelles** | Quel bac sortir et quand, d’après le calendrier de la commune écrit en toutes lettres, encombrants compris ; rappel la veille au soir | aucun | [poubelles](poubelles/README.md) |
+| ⛽ **Prix des carburants** | Les prix d’une station-service, carburant principal d’abord ou celui demandé (« et le SP98 ? ») ; station trouvée par commune ou code postal | aucun | [carburants](carburants/README.md) |
 | 📰 **Titres de l’actualité** | Les premiers titres d’un journal, d’après son flux RSS ou Atom (franceinfo par défaut) | aucun | [actu](actu/README.md) |
 | 🏖️ **Vacances et jours fériés** | En vacances ou pas, prochaines vacances scolaires de la zone, prochain jour férié ; affichage permanent possible | aucun | [vacances](vacances/README.md) |
 | 🚲 **Vélos en libre-service** | Vélos (mécaniques, électriques) et places libres d’une station : Vélib’, V’Lille, Vélo’v, STAR, TBM… (norme GBFS) | aucun | [velos](velos/README.md) |
@@ -58,7 +58,7 @@ git clone https://github.com/lfpoulain/cornelius-modules.git
 └── 📁 cornelius-modules/    ce dépôt : un dossier par module
 ```
 
-Redémarrez Cornelius. Les modules apparaissent dans **Administration → Modules** et se règlent comme les autres : une ou plusieurs sources, un propriétaire, un jeton si le fournisseur en demande un.
+Redémarrez Cornelius. Les modules apparaissent dans **Administration → Modules**, avec leur nom et leur icône, à côté des modules livrés. Ils se règlent comme eux : une ou plusieurs sources, un propriétaire, un jeton si le fournisseur en demande un.
 
 > [!TIP]
 > Pour ranger ce dépôt ailleurs, indiquez son chemin dans le `.env` de Cornelius : `CORNELIUS_MODULES_DIR=/chemin/vers/cornelius-modules`.
@@ -69,7 +69,10 @@ Redémarrez Cornelius. Les modules apparaissent dans **Administration → Module
 git -C cornelius-modules pull
 ```
 
-Redémarrez ensuite Cornelius : les modules ne sont lus qu’au démarrage. Les sources déjà réglées sont gardées.
+Redémarrez ensuite Cornelius : les modules ne sont lus qu’au démarrage. Les sources déjà réglées sont gardées, et reprises si la forme des réglages a changé.
+
+> [!IMPORTANT]
+> Les modules 1.1.0 demandent **Cornelius 0.2.0** : mettez Cornelius à jour avant, ou en même temps que ce dépôt.
 
 Un module qui demande une version de Cornelius plus récente que celle installée n’est pas chargé. L’administration l’indique en bas de **Modules**, sous « Module non chargé », avec la version attendue : il suffit alors de mettre Cornelius à jour.
 
@@ -83,7 +86,7 @@ Le gabarit `_template` est un module complet relié à un fournisseur fictif, av
 
 | Commande | Effet |
 | --- | --- |
-| `npm test` | Lance les tests de tous les modules avec le vrai cœur de Cornelius (base en mémoire, réseau simulé) |
+| `npm test` | Lance les tests de tous les modules avec le vrai cœur de Cornelius (`createTestModule` : base en mémoire, horloge réglable, réseau simulé) |
 | `npm run check` | Vérifie les types contre le contrat de Cornelius |
 | `npm run format` | Met le code en forme, avec les règles de Cornelius |
 
@@ -99,10 +102,10 @@ Un module dépend de Cornelius par trois alias, toujours résolus vers le Cornel
 | --- | --- |
 | `#cornelius/addons` | Le contrat : types, `AddonCollectError` |
 | `#cornelius/validation` | La compilation des schémas JSON |
-| `#cornelius/testing` | Pour les tests : `validateAddonDefinition`, `openDatabase`, `AddonRepository`, `AddonRuntime` |
+| `#cornelius/testing` | Pour les tests : `createTestModule` (le module dans le vrai cœur, horloge et réseau simulés), et `validateAddonDefinition`, `openDatabase`, `AddonRepository`, `AddonRuntime` |
 
 - `apiVersion: 1` est le contrat. Il ne change qu’en cas de rupture : un module d’une autre version est refusé.
-- `minCoreVersion`, facultatif, est la version minimale de Cornelius (`'0.2.0'`) pour un module qui s’appuie sur un ajout récent du cœur.
+- `minCoreVersion`, facultatif, est la version minimale de Cornelius pour un module qui s’appuie sur un ajout récent du cœur. Les modules de ce dépôt demandent `'0.2.0'` : présentation dans l’administration, listes du formulaire, précisions à la voix, fuseau du foyer, affichage recalculé à l’heure dite.
 - Un module externe ne remplace jamais un module livré : s’il en reprend l’identifiant, il est refusé.
 
 Les règles complètes vivent dans Cornelius, à côté du code qu’elles décrivent : [référence du contrat des modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md).
@@ -110,7 +113,7 @@ Les règles complètes vivent dans Cornelius, à côté du code qu’elles décr
 ## 🔒 Sécurité
 
 - 🧑‍💻 Un module s’exécute dans le serveur de Cornelius, avec les mêmes droits que lui : n’installez que des modules dont vous avez lu le code ou connaissez l’auteur.
-- 🌐 Le cœur leur impose son client HTTP (sans redirection, réponses bornées) et valide tout ce qu’ils renvoient.
+- 🌐 Le cœur leur impose son client HTTP (adresses http(s) sans identifiants, trois redirections au plus et jamais vers une adresse non chiffrée, réponses bornées) et valide tout ce qu’ils renvoient.
 - 🔑 Leurs jetons restent dans le `.env` ou l’administration de Cornelius, jamais dans ce dépôt.
 
 ## 📚 Documentation

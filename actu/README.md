@@ -31,8 +31,7 @@ Une source par journal ou par rubrique : « Les titres », « Le sport », « L�
 
 ## Limites
 
-- **L’adresse doit être l’adresse finale du flux.** Cornelius refuse les redirections : une ancienne adresse (`francetvinfo.fr` au lieu de `franceinfo.fr`) donne « La source renvoie vers une autre adresse : utiliser son adresse finale. » Ouvrir l’adresse dans un navigateur montre où elle mène.
-- Les flux encodés autrement qu’en UTF-8, rares aujourd’hui, affichent mal leurs accents.
+- Une ancienne adresse qui renvoie vers la nouvelle (`francetvinfo.fr` vers `franceinfo.fr`) est suivie, trois fois au plus, et jamais vers une adresse non chiffrée (`http://`). Au-delà, Cornelius demande l’adresse finale : l’ouvrir dans un navigateur montre où elle mène.
 - Un flux de plus de 512 Ko est coupé : seuls ses premiers titres sont lus, ce qui suffit.
 - Si le journal ne répond pas, Cornelius annonce les derniers titres connus comme tels.
 

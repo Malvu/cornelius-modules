@@ -6,22 +6,20 @@ Le module Poubelles dit quel bac sortir, et quand, d’après le calendrier de r
 
 - Il répond à « quelle poubelle je sors ce soir ? », « c’est quand le verre ? » ou « on sort les poubelles demain ? ».
 - La veille au soir, à partir de 17 h, il annonce « Ce soir, on sort les emballages : ramassage demain matin. »
-- Le jour du ramassage, il dit « Aujourd’hui » jusqu’à midi, puis passe au ramassage suivant.
+- Le jour du ramassage, il dit « Aujourd’hui » jusqu’à midi, puis passe au ramassage suivant. Sur le miroir, l’affichage change de lui-même à 17 h, à midi et à minuit.
 - La carte « Poubelles » donne le prochain ramassage, puis la prochaine date de chaque bac.
 - Il fonctionne sans réseau : rien ne quitte l’ordinateur.
 
 ## Réglages d’une source
 
-Dans **Modules → Ramassage des poubelles → Ajouter une source**, un champ par bac. On y recopie le calendrier de la commune ; un champ vide veut dire « pas de ramassage ».
+Dans **Modules → Poubelles → Ajouter une source**, une liste de bacs : une ligne par bac, avec ses jours recopiés du calendrier de la commune. **Ajouter** ajoute une ligne, la corbeille la retire.
 
 | Réglage | Exemple | Par défaut |
 | --- | --- | --- |
-| Ordures ménagères | `lundi et jeudi` | `lundi et jeudi` |
-| Emballages et papiers | `mercredi semaines paires` | `mercredi semaines paires` |
-| Verre | `1er vendredi du mois` | vide |
-| Biodéchets | `mardi` | vide |
-| Déchets verts | `dernier lundi du mois` | vide |
+| Bacs ramassés | Verre : `1er vendredi du mois` | Ordures ménagères : `lundi et jeudi` ; Emballages et papiers : `mercredi semaines paires` |
 | Sortir la veille au soir | le rappel dès 17 h la veille | activé |
+
+Les bacs se choisissent dans une liste : ordures ménagères, emballages et papiers, verre, biodéchets, déchets verts, encombrants. Huit lignes au plus. Une source réglée avant la version 1.1.0, avec un champ par bac, est reprise telle quelle : chaque champ rempli devient une ligne.
 
 Ce que le module comprend :
 
@@ -40,11 +38,11 @@ Un mot inconnu n’est jamais deviné : **Tester** affiche par exemple « Verre 
 
 - Les décalages des jours fériés ne sont pas connus : si la commune décale un ramassage, le module ne le sait pas.
 - Les calendriers « toutes les deux semaines à partir du … » s’écrivent avec « semaines paires » ou « impaires » : vérifier la parité d’une date connue sur le calendrier de la commune.
-- Les heures sont celles de Paris.
+- Les heures sont celles du foyer (`CORNELIUS_TIMEZONE`, Europe/Paris par défaut).
 
 ## Outil vocal et affichage permanent
 
-L’outil s’appelle `poubelles__read`. Avec « Afficher en permanence sur le miroir », le miroir montre « Ce soir », « Demain » ou le jour du prochain ramassage, les bacs concernés, puis les deux suivants. La date du relevé n’y figure pas : rien n’est relevé, tout est calculé.
+L’outil s’appelle `poubelles__read`. Avec « Afficher en permanence sur le miroir », le miroir montre « Ce soir », « Demain » ou le jour du prochain ramassage, les bacs concernés, puis les deux suivants. Il passe à « Ce soir » à 17 h, et au ramassage suivant à midi et à minuit. La date du relevé n’y figure pas : rien n’est relevé, tout est calculé.
 
 ## Voir aussi
 

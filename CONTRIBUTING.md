@@ -29,21 +29,22 @@ Cornelius étant privé, la vérification automatique a besoin du secret `CORNEL
 
 - Un dossier `<id>/` à la racine, identique au champ `id`, sans tiret, différent des modules livrés avec Cornelius (`clock`, `weather`, `transit`, `ragator`).
 - Le contrat importé par `#cornelius/addons`, `#cornelius/validation` et, dans les tests, `#cornelius/testing`. Aucun chemin vers `../cornelius/`.
-- Des tests sur des réponses enregistrées du vrai fournisseur (`fixtures/`), sans réseau.
+- Des tests écrits avec `createTestModule`, sur des réponses enregistrées du vrai fournisseur (`fixtures/`), sans réseau.
 - Une fiche `<id>/README.md` remplie à partir de [la fiche du gabarit](_template/README.md), avec la licence des données.
 - Une ligne dans le tableau des modules du [README](README.md#-les-modules) et dans le [CHANGELOG](CHANGELOG.md).
-- `minCoreVersion` si le module s’appuie sur un ajout récent de Cornelius.
+- Un champ `display` (nom, description, icône, phrase vocale) et `minCoreVersion: '0.2.0'`, ou plus si le module s’appuie sur un ajout plus récent de Cornelius.
 - Des fixtures sans contenu protégé : les réponses de fournisseurs de données publiques sont enregistrées telles quelles ; pour la presse, des articles fictifs au format exact du flux.
 
 ## Le code partagé
 
-Le dossier `_lib/` réunit ce que plusieurs modules utilisent ; son nom commence par « _ », Cornelius ne le charge donc pas comme un module. Il contient `flux.ts` : lecture des flux RSS et Atom, coupe des textes sur un mot, ancienneté (« il y a 3 heures »). Un module l’importe par un chemin relatif (`../_lib/flux.js`) et reste sans autre dépendance. Une fonction n’y entre que lorsqu’au moins deux modules s’en servent ; avant, elle reste dans son module, comme `agenda/ics.ts`.
+Le dossier `_lib/` réunit ce que plusieurs modules utilisent ; son nom commence par « _ », Cornelius ne le charge donc pas comme un module. Il contient `flux.ts` (lecture des flux RSS et Atom, coupe des textes sur un mot, ancienneté « il y a 3 heures ») et `temps.ts` (jour civil, minuit suivant, heure murale dans le fuseau du foyer, changements d’heure compris). Un module l’importe par un chemin relatif (`../_lib/temps.js`) et reste sans autre dépendance. Une fonction n’y entre que lorsqu’au moins deux modules s’en servent ; avant, elle reste dans son module, comme `agenda/ics.ts`.
 
 ## Conventions
 
 - TypeScript strict ; aucun avertissement de `npm run check`.
 - Textes en français (cartes, réponses orales, messages d’erreur, fiches), phrases courtes, sans tiret long.
 - Une donnée absente n’est jamais inventée : une panne n’est pas « zéro ».
+- Jours et heures se calculent dans le fuseau du foyer (`context.timeZone`), jamais à Paris en dur.
 - Les besoins qui dépassent le contrat (nouveau type de carte, outil qui agit) se discutent dans [Cornelius](https://github.com/lfpoulain/Cornelius) : le contrat et sa [référence](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md) y évoluent ensemble.
 
 ## Licence des contributions

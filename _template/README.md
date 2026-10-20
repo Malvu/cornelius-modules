@@ -27,7 +27,7 @@ Le module a besoin d’[un jeton Fournisseur] ([gratuit ou payant]), à demander
 
 ## Réglages d’une source
 
-Dans **Modules → [Nom affiché] → Ajouter une source** :
+Dans **Modules → [Nom affiché, celui de `display.name`] → Ajouter une source** :
 
 | Réglage | Effet | Par défaut |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ Dans **Modules → [Nom affiché] → Ajouter une source** :
 
 ## Outil vocal et affichage permanent
 
-L’outil s’appelle `[id]__read`. [Avec « Afficher en permanence sur le miroir », le miroir montre … / Ce module ne propose pas d’affichage permanent.]
+L’outil s’appelle `[id]__read`. [Précisions acceptées à la voix, si l’outil déclare des `arguments` ; sinon, supprimez cette phrase.] [Avec « Afficher en permanence sur le miroir », le miroir montre … / Ce module ne propose pas d’affichage permanent.]
 
 ## Voir aussi
 

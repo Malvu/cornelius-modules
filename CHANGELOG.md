@@ -4,6 +4,21 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 ## Non publié
 
+### 2026-10-20 : passage à Cornelius 0.2.0
+
+**Modifié**
+
+- Tous les modules (1.1.0) demandent Cornelius 0.2.0 et s’y présentent avec leur nom, leur description, leur icône et leur phrase vocale (`display`). Jours et heures suivent le fuseau du foyer (`CORNELIUS_TIMEZONE`), et non plus Paris en dur.
+- **Poubelles** : les bacs forment une liste, un bac et ses jours par ligne, encombrants compris ; les sources déjà réglées sont reprises (`configVersion` 2). Sur le miroir, « Ce soir » apparaît à 17 h, et le ramassage suivant à midi et à minuit, sans attendre.
+- **Agenda** : précisions à la voix (« et samedi ? », « la semaine prochaine ? ») par les arguments `debut` et `jours` ; « Agenda incomplet » quand le fichier dépasse 8 Mo ; l’affichage permanent suit le début et la fin des rendez-vous ; les liens qui redirigent (iCloud) sont suivis.
+- **Prix des carburants** : carburant principal en liste déroulante, avec « Tous » ; « et le SP98 ? » à la voix (argument `carburant`), avec « Pas de sans-plomb 98 à cette station. » s’il manque ; carte « Aucun prix » pour une station qui n’en publie pas.
+- **Vacances et jours fériés** : zone et jours fériés en listes déroulantes ; calendrier relu toutes les 12 heures ; l’affichage permanent change de jour à minuit.
+- **Vélos en libre-service** : les fichiers d’un réseau sont partagés entre ses stations et la recherche (`cacheMs`) ; plusieurs sources ne multiplient pas les requêtes.
+- **Éphéméride** : sélection relue à minuit, dans le fuseau du foyer.
+- **Titres de l’actualité** et **YouTube** : les flux qui redirigent et ceux qui ne sont pas en UTF-8 sont lus ; le User-Agent est celui de Cornelius.
+- `_lib/temps.ts` : jour civil, minuit suivant et heure murale dans le fuseau du foyer, changements d’heure compris.
+- Gabarit, tutoriel et tests : `display`, `minCoreVersion: '0.2.0'`, tests écrits avec `createTestModule`.
+
 ### 2026-10-20
 
 **Ajouté**

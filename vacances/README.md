@@ -10,7 +10,7 @@ Le module Vacances et jours fériés dit si les enfants sont en vacances, quand 
   - sinon, le compte à rebours (« Dans 44 jours ») et les dates (« Vacances de Noël, du samedi 19 décembre au dimanche 3 janvier ») ;
   - dessous, les périodes suivantes (« Hiver : 6 févr. → 21 févr. ») et le prochain jour férié (« Toussaint, dimanche 1er novembre (dans 12 jours) »).
 - Les dates vont du premier au dernier jour sans classe. Le jour de la rentrée n’est plus un jour de vacances.
-- Le calendrier est relu au plus une fois par heure. Le compte à rebours, lui, est recalculé à chaque demande : il change bien à minuit.
+- Le calendrier est relu au plus toutes les 12 heures. Le compte à rebours, lui, est recalculé à chaque demande, et sur le miroir à minuit : il change bien de jour. « Aujourd’hui » est le jour du foyer (`CORNELIUS_TIMEZONE`).
 
 ## Sources
 
@@ -21,12 +21,12 @@ Aucun jeton n’est nécessaire.
 
 ## Réglages d’une source
 
-Dans **Modules → Vacances scolaires et jours fériés → Ajouter une source** :
+Dans **Modules → Vacances et jours fériés → Ajouter une source**, deux listes déroulantes :
 
 | Réglage | Effet | Par défaut |
 | --- | --- | --- |
-| Zone scolaire | `A`, `B`, `C` ou `Corse`. Paris, Créteil, Versailles, Montpellier et Toulouse sont en zone C. | `C` |
-| Jours fériés | `metropole`, ou `alsace-moselle` pour ajouter le Vendredi saint et le 26 décembre | `metropole` |
+| Zone scolaire | Zone A, Zone B, Zone C ou Corse. Paris, Créteil, Versailles, Montpellier et Toulouse sont en zone C. | Zone C |
+| Jours fériés | France métropolitaine, ou Alsace-Moselle pour ajouter le Vendredi saint et le 26 décembre | France métropolitaine |
 
 Une famille dont les enfants sont dans deux zones crée deux sources, par exemple « Vacances de Léa » et « Vacances de Tom ».
 
@@ -39,7 +39,7 @@ Une famille dont les enfants sont dans deux zones crée deux sources, par exempl
 
 ## Outil vocal et affichage permanent
 
-L’outil s’appelle `vacances__read`. Avec « Afficher en permanence sur le miroir », le miroir montre « En vacances » et le jour de la rentrée, ou le compte à rebours et le nom des prochaines vacances, avec le prochain jour férié dessous. La date du relevé n’y figure pas : un calendrier ne vieillit pas d’une heure à l’autre.
+L’outil s’appelle `vacances__read`. Avec « Afficher en permanence sur le miroir », le miroir montre « En vacances » et le jour de la rentrée, ou le compte à rebours et le nom des prochaines vacances, avec le prochain jour férié dessous ; le compte à rebours change à minuit. La date du relevé n’y figure pas : un calendrier ne vieillit pas d’une heure à l’autre.
 
 ## Voir aussi
 

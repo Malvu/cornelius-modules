@@ -6,10 +6,11 @@ Le module Agenda lit les prochains rendez-vous d’un agenda partagé (Google Ag
 
 - Il répond à « qu’est-ce qu’on a demain ? », « c’est quand le dentiste ? » ou « mon agenda de la semaine » : « Aujourd’hui : Dentiste de Léa à 16 h et Séance photo à 18 h. Demain : Foot de Tom à 18 h 30. Et 4 autres dans les 7 prochains jours. »
 - À l’oral, il donne trois jours et six rendez-vous au plus, puis le nombre de ceux qui restent.
+- On peut préciser à la voix : « et samedi ? », « la semaine prochaine ? », « qu’est-ce qu’on a dans quinze jours ? ». Jusqu’à deux mois à l’avance, deux semaines à la fois.
 - La carte « Agenda · Famille » donne le prochain rendez-vous, son lieu, puis les cinq suivants.
 - Un rendez-vous en cours est annoncé « en cours, jusqu’à 11 h » ; un rendez-vous fini disparaît aussitôt, sans attendre la relecture de l’agenda.
 - Les journées entières se disent « toute la journée », un séjour « jusqu’au lundi 26 octobre ».
-- L’agenda est relu au plus tous les quarts d’heure. Les heures sont celles de Paris.
+- L’agenda est relu au plus tous les quarts d’heure. Les heures sont dites dans le fuseau du foyer (`CORNELIUS_TIMEZONE`, Europe/Paris par défaut), quel que soit celui de l’événement.
 
 ## Trouver le lien iCal privé
 
@@ -39,15 +40,17 @@ Les événements simples, les journées entières et les séjours ; les fuseaux 
 
 ## Limites
 
-- **L’adresse doit être l’adresse finale.** Cornelius refuse les redirections. Certains liens iCloud renvoient vers un autre serveur : il faut alors coller l’adresse vers laquelle ils mènent.
+- Un lien qui renvoie vers un autre serveur (certains liens iCloud) est suivi, trois fois au plus, et jamais vers une adresse non chiffrée (`http://`). Au-delà, il faut coller l’adresse finale.
 - Les règles de répétition rares (toutes les heures, `BYSETPOS`, `BYWEEKNO`) ne sont pas lues : l’événement n’apparaît qu’à sa première date.
-- Un agenda de plus de 8 Mo est coupé : ses derniers événements dans le fichier peuvent manquer.
+- Un agenda de plus de 8 Mo est coupé : ses derniers événements dans le fichier peuvent manquer. La carte et la réponse le disent (« Agenda incomplet »).
 - Les invitations, les réponses et les rappels de l’agenda ne sont pas gérés : seulement ce qui est prévu.
 - Si l’agenda ne répond pas, Cornelius annonce le dernier agenda connu, à vérifier.
 
 ## Outil vocal et affichage permanent
 
-L’outil s’appelle `agenda__read`. Avec « Afficher en permanence sur le miroir », le miroir montre les trois prochains rendez-vous avec leur jour et leur heure, ou « Rien de prévu ».
+L’outil s’appelle `agenda__read`. Il accepte deux précisions : le premier jour à lire (`debut`, de 0 aujourd’hui à 60) et le nombre de jours (`jours`, de 1 à 14). Une lecture précisée n’est ni gardée en cache, ni enregistrée.
+
+Avec « Afficher en permanence sur le miroir », le miroir montre les trois prochains rendez-vous avec leur jour et leur heure, ou « Rien de prévu ». Il se met à jour au début et à la fin de chaque rendez-vous, et à minuit, sans relire l’agenda.
 
 ## Voir aussi
 

@@ -7,7 +7,7 @@ Le module Éphéméride raconte ce qui s’est passé un jour comme aujourd’hu
 - Il répond à « qu’est-ce qui s’est passé un 20 octobre ? » ou « l’éphéméride du jour » : « Un jour comme aujourd’hui, il y a 15 ans, en 2011 : l’ETA annonce la « fin définitive de son action armée ». »
 - Il dit d’abord l’anniversaire le plus rond (100 ans, puis 50, 25, 10, 5), puis le plus récent.
 - La carte « Éphéméride · 20 octobre » donne cet événement, puis les suivants, avec leur année.
-- Le jour suit l’heure de Paris. Juste après minuit, un relevé de la veille encore en cache est annoncé à sa date (« Un 20 octobre… »), jamais comme celui du jour.
+- Le jour est celui du foyer (`CORNELIUS_TIMEZONE`, Europe/Paris par défaut). La sélection est relue à minuit ; si Wikipédia ne répond pas, celle de la veille est annoncée à sa date (« Un 20 octobre… »), jamais comme celle du jour.
 
 ## Source
 
