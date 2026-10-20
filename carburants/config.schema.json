@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CarburantsConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stationId", "stationLabel", "fuel"],
+  "properties": {
+    "stationId": {
+      "title": "Station",
+      "description": "Cherchez la station par sa commune ou son code postal.",
+      "type": "string",
+      "pattern": "^[0-9]{5,9}$",
+      "maxLength": 9
+    },
+    "stationLabel": {
+      "title": "Nom de la station",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "fuel": {
+      "title": "Carburant principal",
+      "description": "gazole, sp95, sp98, e10, e85 ou gplc : annoncé en premier. Vide : tous, dans l’ordre habituel.",
+      "type": ["string", "null"],
+      "pattern": "^(gazole|sp95|sp98|e10|e85|gplc)$",
+      "maxLength": 6,
+      "examples": ["gazole"]
+    }
+  }
+}

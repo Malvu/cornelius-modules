@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CarburantsData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["address", "city", "prices"],
+  "properties": {
+    "address": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "city": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "prices": {
+      "description": "Prix affichés, carburant principal d’abord. updated : jour du relevé, à Paris.",
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fuel", "price", "updated"],
+        "properties": {
+          "fuel": { "enum": ["gazole", "sp95", "sp98", "e10", "e85", "gplc"] },
+          "price": { "type": "number", "exclusiveMinimum": 0, "maximum": 20 },
+          "updated": { "type": ["string", "null"], "format": "date" }
+        }
+      }
+    }
+  }
+}

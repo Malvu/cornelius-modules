@@ -8,6 +8,7 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 **Ajouté**
 
+- Module **Prix des carburants** (`carburants`, 1.0.0) : les prix d’une station d’après le flux officiel du ministère, recherche de la station par commune ou code postal, sans jeton.
 - Module **Titres de l’actualité** (`actu`, 1.0.0) : les premiers titres d’un flux RSS ou Atom choisi, dans l’ordre du journal, sans jeton.
 - Module **Éphéméride** (`ephemeride`, 1.0.0) : ce qui s’est passé un jour comme aujourd’hui, d’après la sélection de Wikipédia en français, l’anniversaire le plus rond d’abord.
 - Module **YouTube** (`youtube`, 1.0.0) : la dernière vidéo d’une chaîne par son flux public, Shorts compris ou non, sans jeton.

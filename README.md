@@ -35,6 +35,7 @@ Cornelius livre ses modules de base avec lui. Ce dépôt accueille **tous les au
 | --- | --- | --- | --- |
 | 📜 **Éphéméride** | Ce qui s’est passé un jour comme aujourd’hui, l’anniversaire le plus rond d’abord, d’après Wikipédia | aucun | [ephemeride](ephemeride/README.md) |
 | 🗑️ **Poubelles** | Quel bac sortir et quand, d’après le calendrier de la commune écrit en toutes lettres ; rappel la veille au soir | aucun | [poubelles](poubelles/README.md) |
+| ⛽ **Prix des carburants** | Les prix d’une station-service, carburant principal d’abord ; station trouvée par commune ou code postal | aucun | [carburants](carburants/README.md) |
 | 📰 **Titres de l’actualité** | Les premiers titres d’un journal, d’après son flux RSS ou Atom (franceinfo par défaut) | aucun | [actu](actu/README.md) |
 | 🏖️ **Vacances et jours fériés** | En vacances ou pas, prochaines vacances scolaires de la zone, prochain jour férié ; affichage permanent possible | aucun | [vacances](vacances/README.md) |
 | ▶️ **YouTube** | La dernière vidéo d’une chaîne (par défaut, Les Frères Poulain), avec ou sans les Shorts | aucun | [youtube](youtube/README.md) |

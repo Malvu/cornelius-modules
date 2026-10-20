@@ -1,0 +1,23 @@
+{
+  "total_count": 1,
+  "results": [
+    {
+      "id": 35743001,
+      "adresse": "boulevard Giraudais",
+      "ville": "Pacé",
+      "cp": "35740",
+      "gazole_prix": 2.338,
+      "gazole_maj": "2026-10-20T11:24:05+00:00",
+      "sp95_prix": null,
+      "sp95_maj": null,
+      "sp98_prix": null,
+      "sp98_maj": null,
+      "e10_prix": 2.144,
+      "e10_maj": "2026-10-19T10:38:04+00:00",
+      "e85_prix": 0.92,
+      "e85_maj": "2026-10-19T10:38:03+00:00",
+      "gplc_prix": 0.936,
+      "gplc_maj": "2026-10-19T10:38:03+00:00"
+    }
+  ]
+}
