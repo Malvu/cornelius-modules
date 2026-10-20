@@ -8,6 +8,7 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 **Ajouté**
 
+- Module **Agenda** (`agenda`, 1.0.0) : les prochains rendez-vous d’un agenda partagé par son lien iCal privé ; fuseaux, journées entières, répétitions, exceptions et annulations.
 - Module **Vélos en libre-service** (`velos`, 1.0.0) : vélos et places libres d’une station, dans les réseaux GBFS 2.x et 3.0 ; réseau choisi par ville, station par nom, sans jeton.
 - Module **Prix des carburants** (`carburants`, 1.0.0) : les prix d’une station d’après le flux officiel du ministère, recherche de la station par commune ou code postal, sans jeton.
 - Module **Titres de l’actualité** (`actu`, 1.0.0) : les premiers titres d’un flux RSS ou Atom choisi, dans l’ordre du journal, sans jeton.

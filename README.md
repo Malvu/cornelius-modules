@@ -33,6 +33,7 @@ Cornelius livre ses modules de base avec lui. Ce dépôt accueille **tous les au
 
 | Module | Ce qu’il fait | Jeton | Fiche |
 | --- | --- | --- | --- |
+| 📅 **Agenda** | Les prochains rendez-vous d’un agenda Google, iCloud ou Outlook, par son lien iCal privé, répétitions comprises | lien privé | [agenda](agenda/README.md) |
 | 📜 **Éphéméride** | Ce qui s’est passé un jour comme aujourd’hui, l’anniversaire le plus rond d’abord, d’après Wikipédia | aucun | [ephemeride](ephemeride/README.md) |
 | 🗑️ **Poubelles** | Quel bac sortir et quand, d’après le calendrier de la commune écrit en toutes lettres ; rappel la veille au soir | aucun | [poubelles](poubelles/README.md) |
 | ⛽ **Prix des carburants** | Les prix d’une station-service, carburant principal d’abord ; station trouvée par commune ou code postal | aucun | [carburants](carburants/README.md) |

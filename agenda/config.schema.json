@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgendaConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["url", "days"],
+  "properties": {
+    "url": {
+      "title": "Lien iCal privé",
+      "description": "L’« adresse secrète au format iCal » de l’agenda (Google, iCloud, Outlook). Elle donne accès à l’agenda : ne la partagez pas.",
+      "type": "string",
+      "pattern": "^(https?|webcal)://[^\\s]+$",
+      "maxLength": 2000
+    },
+    "days": {
+      "title": "Jours à l’avance",
+      "description": "Combien de jours Cornelius regarde, aujourd’hui compris.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 14
+    }
+  }
+}

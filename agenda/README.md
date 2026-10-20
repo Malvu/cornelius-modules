@@ -1,0 +1,56 @@
+# Module Agenda
+
+Le module Agenda lit les prochains rendez-vous d’un agenda partagé (Google Agenda, iCloud, Outlook…) par son lien iCal privé. Cette fiche s’adresse à la personne qui règle le miroir et à celle qui lit le code du module (identifiant `agenda`).
+
+## Ce que fait le module
+
+- Il répond à « qu’est-ce qu’on a demain ? », « c’est quand le dentiste ? » ou « mon agenda de la semaine » : « Aujourd’hui : Dentiste de Léa à 16 h et Séance photo à 18 h. Demain : Foot de Tom à 18 h 30. Et 4 autres dans les 7 prochains jours. »
+- À l’oral, il donne trois jours et six rendez-vous au plus, puis le nombre de ceux qui restent.
+- La carte « Agenda · Famille » donne le prochain rendez-vous, son lieu, puis les cinq suivants.
+- Un rendez-vous en cours est annoncé « en cours, jusqu’à 11 h » ; un rendez-vous fini disparaît aussitôt, sans attendre la relecture de l’agenda.
+- Les journées entières se disent « toute la journée », un séjour « jusqu’au lundi 26 octobre ».
+- L’agenda est relu au plus tous les quarts d’heure. Les heures sont celles de Paris.
+
+## Trouver le lien iCal privé
+
+| Service | Où le trouver |
+| --- | --- |
+| Google Agenda | Sur ordinateur : **Paramètres** → l’agenda, à gauche → **Intégrer l’agenda** → **Adresse secrète au format iCal** |
+| iCloud | Dans l’app Calendrier : partager l’agenda → **Calendrier public** → copier le lien (`webcal://…`) |
+| Outlook.com | **Paramètres** → **Calendrier** → **Calendriers partagés** → **Publier un calendrier** → lien **ICS** |
+
+> [!WARNING]
+> Ce lien donne accès à tout l’agenda, sans mot de passe. Cornelius le garde dans les réglages de la source, sur cet ordinateur, et ne l’écrit ni dans le journal, ni sur le miroir, ni dans ses réponses. S’il a été partagé par erreur, réinitialisez-le chez Google, iCloud ou Outlook, puis collez le nouveau.
+
+## Réglages d’une source
+
+Dans **Modules → Agenda → Ajouter une source** :
+
+| Réglage | Effet | Par défaut |
+| --- | --- | --- |
+| Lien iCal privé | L’adresse ci-dessus, en `https://` ou `webcal://` | vide |
+| Jours à l’avance | De 1 à 14, aujourd’hui compris | 7 |
+
+Une source par agenda : « Agenda de la famille », « Agenda de Léa » (propriétaire : Léa), « Le foot de Tom »…
+
+## Ce que le module comprend
+
+Les événements simples, les journées entières et les séjours ; les fuseaux horaires, y compris les noms Windows d’Outlook ; les répétitions chaque jour, chaque semaine (certains jours), chaque mois (« le 15 », « le 2e mardi », « le dernier vendredi ») et chaque année, avec leur fin ou leur nombre d’occurrences ; les occurrences supprimées ou déplacées ; les événements annulés.
+
+## Limites
+
+- **L’adresse doit être l’adresse finale.** Cornelius refuse les redirections. Certains liens iCloud renvoient vers un autre serveur : il faut alors coller l’adresse vers laquelle ils mènent.
+- Les règles de répétition rares (toutes les heures, `BYSETPOS`, `BYWEEKNO`) ne sont pas lues : l’événement n’apparaît qu’à sa première date.
+- Un agenda de plus de 8 Mo est coupé : ses derniers événements dans le fichier peuvent manquer.
+- Les invitations, les réponses et les rappels de l’agenda ne sont pas gérés : seulement ce qui est prévu.
+- Si l’agenda ne répond pas, Cornelius annonce le dernier agenda connu, à vérifier.
+
+## Outil vocal et affichage permanent
+
+L’outil s’appelle `agenda__read`. Avec « Afficher en permanence sur le miroir », le miroir montre les trois prochains rendez-vous avec leur jour et leur heure, ou « Rien de prévu ».
+
+## Voir aussi
+
+- [Créer un module](../docs/creer-un-module.md)
+- [Référence du contrat des modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md)
+- Code : [index.ts](index.ts), [ics.ts](ics.ts) (lecture iCalendar), [config.schema.json](config.schema.json)
