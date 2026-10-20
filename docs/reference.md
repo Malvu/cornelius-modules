@@ -1,10 +1,10 @@
 # Référence du contrat des modules
 
-> Copie de la [référence du contrat](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/reference.md) tenue dans Cornelius, qui fait foi en cas d’écart. Les chemins `addons/<id>/` y désignent les modules livrés ; dans ce dépôt, un module est un dossier `<id>/` à la racine, soumis aux mêmes règles.
+> Copie de la [référence du contrat](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md) tenue dans Cornelius, qui fait foi en cas d’écart. Les chemins `addons/<id>/` y désignent les modules livrés ; dans ce dépôt, un module est un dossier `<id>/` à la racine, soumis aux mêmes règles.
 
 Cette page fixe le contrat `apiVersion: 1` que doit respecter un module d’informations (un « addon » dans le code). Elle s’adresse aux développeurs et aux assistants de code qui écrivent ou relisent un module. Pour une première prise en main, suivez d’abord le [tutoriel](creer-un-module.md).
 
-« DOIT » marque une règle du contrat, « DEVRAIT » une recommandation. En cas de doute, le code fait foi : [shared/addons.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/shared/addons.ts) pour les types, [server/addons/registry.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/server/addons/registry.ts) pour le chargement et [server/addons/runtime.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/server/addons/runtime.ts) pour l’exécution.
+« DOIT » marque une règle du contrat, « DEVRAIT » une recommandation. En cas de doute, le code fait foi : [shared/addons.ts](https://github.com/lfpoulain/Cornelius/blob/main/shared/addons.ts) pour les types, [server/addons/registry.ts](https://github.com/lfpoulain/Cornelius/blob/main/server/addons/registry.ts) pour le chargement et [server/addons/runtime.ts](https://github.com/lfpoulain/Cornelius/blob/main/server/addons/runtime.ts) pour l’exécution.
 
 ## Choisir le mécanisme
 
@@ -12,9 +12,9 @@ Cette page fixe le contrat `apiVersion: 1` que doit respecter un module d’info
 | --- | --- |
 | Lire une information : météo, horaires, disponibilités, agenda | Un module dans `addons/<id>/`, décrit ici |
 | Répondre à une question libre à partir d’un service | Un module avec un [outil à la demande](#loutil-à-la-demande) |
-| Déclencher un effet : allumer une lampe, ouvrir un portail | Une [commande HTTP](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/README.md#les-commandes-http), réglée dans l’administration, sans code |
-| Piloter les appareils de Home Assistant | L’intégration [Home Assistant](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/fonctionnalites/home-assistant.md) |
-| Confier une tâche longue à un agent personnel | Les [agents Hermes](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/fonctionnalites/agents-hermes.md) |
+| Déclencher un effet : allumer une lampe, ouvrir un portail | Une [commande HTTP](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md#les-commandes-http), réglée dans l’administration, sans code |
+| Piloter les appareils de Home Assistant | L’intégration [Home Assistant](https://github.com/lfpoulain/Cornelius/blob/main/docs/fonctionnalites/home-assistant.md) |
+| Confier une tâche longue à un agent personnel | Les [agents Hermes](https://github.com/lfpoulain/Cornelius/blob/main/docs/fonctionnalites/agents-hermes.md) |
 | Afficher une information sans la demander | Le champ `ambient` d’un module, plus bas |
 | Toucher à la caméra, au son ou à l’analyse d’image | Le cœur de Cornelius ; Vision et Génération d’image ne sont pas des modules de ce contrat |
 | Un nouveau type de carte, un outil paramétré ou qui agit | Une évolution du cœur, à concevoir à part |
@@ -67,7 +67,7 @@ Le fichier `index.ts` DOIT exporter par défaut un objet `AddonDefinition<TConfi
 | `collect` | `async (context) => AddonCollection<TData>` |
 | `present` | `(snapshot, context) => AddonPresentation`, synchrone |
 
-Les schémas suivent JSON Schema 2020-12, compilés par Ajv en mode strict avec les formats standards ([shared/validation.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/shared/validation.ts)). Ils DEVRAIENT déclarer `type: "object"`, `additionalProperties: false`, `required`, des bornes numériques et des longueurs maximales. Une valeur absente DOIT être modélisée (`null`, champ facultatif, liste vide), jamais inventée.
+Les schémas suivent JSON Schema 2020-12, compilés par Ajv en mode strict avec les formats standards ([shared/validation.ts](https://github.com/lfpoulain/Cornelius/blob/main/shared/validation.ts)). Ils DEVRAIENT déclarer `type: "object"`, `additionalProperties: false`, `required`, des bornes numériques et des longueurs maximales. Une valeur absente DOIT être modélisée (`null`, champ facultatif, liste vide), jamais inventée.
 
 Le module DOIT importer le contrat par les alias `#cornelius/addons` et `#cornelius/validation` (champ `imports` du `package.json`), toujours résolus vers le cœur qui le charge. Ses tests importent de même `#cornelius/testing` : `validateAddonDefinition`, `openDatabase`, `AddonRepository` et `AddonRuntime`.
 
@@ -93,7 +93,7 @@ Le chargeur lit `addons/`, puis le dossier des modules externes (`cornelius-modu
 
 La requête accepte `url`, `method` (`GET` par défaut, ou `POST`), `headers`, `body` (une chaîne), `timeoutMs` (4 000 par défaut), `maxBytes` (256 Kio par défaut) et `signal`. La réponse expose `status`, `headers`, `text()` et `json()`, tous deux **synchrones**. Il n’y a pas de propriété `ok`.
 
-Le client du cœur ([server/addons/http.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/server/addons/http.ts)) refuse les redirections et ne filtre pas les hôtes : le module DEVRAIT fixer l’adresse du fournisseur et encoder chaque partie variable (`encodeURIComponent`). Le corps est coupé à `maxBytes`, sans erreur dédiée : une réponse coupée devient en général un JSON illisible.
+Le client du cœur ([server/addons/http.ts](https://github.com/lfpoulain/Cornelius/blob/main/server/addons/http.ts)) refuse les redirections et ne filtre pas les hôtes : le module DEVRAIT fixer l’adresse du fournisseur et encoder chaque partie variable (`encodeURIComponent`). Le corps est coupé à `maxBytes`, sans erreur dédiée : une réponse coupée devient en général un JSON illisible.
 
 Le client lève lui-même des `AddonCollectError` :
 
@@ -125,7 +125,7 @@ En cas d’échec, `collect` DOIT lever `new AddonCollectError(code, message, re
 | `malformed` | Réponse illisible, champ manquant, date ou valeur incohérente | Réponse illisible |
 | `upstream` | Autre erreur du fournisseur | Le service ne répond pas |
 
-Les libellés viennent de [web/components/admin/format.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/web/components/admin/format.ts).
+Les libellés viennent de [web/components/admin/format.ts](https://github.com/lfpoulain/Cornelius/blob/main/web/components/admin/format.ts).
 
 Adaptez la correspondance aux statuts réels du fournisseur. `retryable` informe seulement : il ne programme aucune nouvelle tentative. Une autre exception est rapportée comme `upstream`, « Le module a rencontré une erreur inattendue. », et son texte va au journal (300 caractères au plus). Ne masquez jamais une panne par des données vides ou d’exemple.
 
@@ -169,13 +169,13 @@ Le cœur ajoute `schemaVersion`, `cardType`, `addonId`, `instanceRef`, `snapshot
 | `items` | 3 lignes `{ label, value }` au plus ; 1 à 80 et 1 à 160 caractères |
 | `showCollectedAt` | Facultatif, vrai par défaut ; faux masque la date du relevé (utile pour un calcul local comme l’heure), sauf en repli |
 
-Le cœur vérifie ce contenu ([schemas/ambient-presentation.schema.json](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/schemas/ambient-presentation.schema.json)). **En cas de refus** ou d’exception, la source s’affiche « Source indisponible ». Le cœur ajoute le nom de la source, son statut et sa date ; le miroir garde la typographie et en montre quatre au plus.
+Le cœur vérifie ce contenu ([schemas/ambient-presentation.schema.json](https://github.com/lfpoulain/Cornelius/blob/main/schemas/ambient-presentation.schema.json)). **En cas de refus** ou d’exception, la source s’affiche « Source indisponible ». Le cœur ajoute le nom de la source, son statut et sa date ; le miroir garde la typographie et en montre quatre au plus.
 
-Sur le miroir ([web/components/AmbientModules.tsx](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/web/components/AmbientModules.tsx)), l’en-tête est le « Nom affiché » de la source, plus précis que le titre du module : `title` est obligatoire mais n’est pas affiché. Viennent ensuite `value`, `subtitle`, les lignes `items`, puis « Relevé » avec la date et l’heure de la collecte (sauf avec `showCollectedAt: false`). Un relevé en repli affiche à la place « Dernière donnée connue » et son ancienneté.
+Sur le miroir ([web/components/AmbientModules.tsx](https://github.com/lfpoulain/Cornelius/blob/main/web/components/AmbientModules.tsx)), l’en-tête est le « Nom affiché » de la source, plus précis que le titre du module : `title` est obligatoire mais n’est pas affiché. Viennent ensuite `value`, `subtitle`, les lignes `items`, puis « Relevé » avec la date et l’heure de la collecte (sauf avec `showCollectedAt: false`). Un relevé en repli affiche à la place « Dernière donnée connue » et son ancienneté.
 
-L’option « Afficher en permanence sur le miroir » n’est proposée que pour un module qui déclare `ambient`, et le serveur refuse de l’activer sinon. Le choix appartient à la source (désactivé par défaut), hors des réglages du module. Les règles de visibilité sont décrites dans [Les modules](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/README.md#laffichage-permanent).
+L’option « Afficher en permanence sur le miroir » n’est proposée que pour un module qui déclare `ambient`, et le serveur refuse de l’activer sinon. Le choix appartient à la source (désactivé par défaut), hors des réglages du module. Les règles de visibilité sont décrites dans [Les modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md#laffichage-permanent).
 
-Pendant l’affichage, le cœur ([server/addons/ambient.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/server/addons/ambient.ts)) relance la collecte à l’expiration du relevé, avec le même cache que la voix. Après un échec, il réessaie au bout de 30 s, puis 60 s, 120 s, 240 s et au plus 5 minutes. Un départ, un changement de personne, de réglage ou la désactivation annule les lectures en cours.
+Pendant l’affichage, le cœur ([server/addons/ambient.ts](https://github.com/lfpoulain/Cornelius/blob/main/server/addons/ambient.ts)) relance la collecte à l’expiration du relevé, avec le même cache que la voix. Après un échec, il réessaie au bout de 30 s, puis 60 s, 120 s, 240 s et au plus 5 minutes. Un départ, un changement de personne, de réglage ou la désactivation annule les lectures en cours.
 
 ## Cache, erreurs et propriétaires
 
@@ -241,7 +241,7 @@ Extension compatible v1, pour un module qui répond à une question libre (une r
 | Échec | Pas de repli : la réponse à une autre question n’est jamais resservie ; le message du module est dit (« Source indisponible : … ») |
 | Journal | La durée et le statut, jamais la question |
 
-`collect` DOIT donc traiter les deux cas : avec `query`, la réponse ; sans, une vérification utile à **Tester** (le module [Ragator](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/ragator/index.ts) lit l’état du corpus). `dataSchema` couvre les deux formes, et `present` aussi. Le délai `timeoutMs` reste celui du module : un service lent DEVRAIT le relever et le dire dans la description de l’outil, pour que Cornelius prévienne avant d’appeler.
+`collect` DOIT donc traiter les deux cas : avec `query`, la réponse ; sans, une vérification utile à **Tester** (le module [Ragator](https://github.com/lfpoulain/Cornelius/blob/main/addons/ragator/index.ts) lit l’état du corpus). `dataSchema` couvre les deux formes, et `present` aussi. Le délai `timeoutMs` reste celui du module : un service lent DEVRAIT le relever et le dire dans la description de l’outil, pour que Cornelius prévienne avant d’appeler.
 
 ## Les secrets
 
@@ -257,13 +257,13 @@ Déclarez chaque jeton dans `secrets` :
 
 L’administration affiche alors « Ce module a besoin d’… » tant que le jeton manque, et grise « Ajouter une source ». Elle ne voit jamais la valeur.
 
-La déclaration suffit à brancher le jeton : il se saisit dans la carte du module ou dans **Mise en route → Clés et jetons**, et sinon se lit dans la variable `env` du fichier `.env`. Il est masqué dans le journal dès qu’il est saisi. Les variables réservées au cœur (`OPENAI_API_KEY`, `CORNELIUS_ADMIN_PASSWORD`, `CORNELIUS_PERCEPTION_TOKEN`, `CORNELIUS_IMAGE_GENERATION_TOKEN`) sont ignorées. Documentez la variable, sans valeur, dans [.env.example](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/.env.example) et dans la fiche du module, et testez avec un jeton fictif : absent, refusé, accepté.
+La déclaration suffit à brancher le jeton : il se saisit dans la carte du module ou dans **Mise en route → Clés et jetons**, et sinon se lit dans la variable `env` du fichier `.env`. Il est masqué dans le journal dès qu’il est saisi. Les variables réservées au cœur (`OPENAI_API_KEY`, `CORNELIUS_ADMIN_PASSWORD`, `CORNELIUS_PERCEPTION_TOKEN`, `CORNELIUS_IMAGE_GENERATION_TOKEN`) sont ignorées. Documentez la variable, sans valeur, dans [.env.example](https://github.com/lfpoulain/Cornelius/blob/main/.env.example) et dans la fiche du module, et testez avec un jeton fictif : absent, refusé, accepté.
 
 Dans le module, un jeton absent DOIT lever `config_invalid`. La syntaxe `${secret:NOM}` et les variables `CORNELIUS_SECRET_<NOM>` sont réservées aux commandes HTTP : `context.secret()` ne les lit pas.
 
 ## La recherche assistée
 
-Pour choisir un arrêt, une station ou une direction sans taper d’identifiant, déclarez `search` : une liste `fields` et une fonction `find(input, context)`. Le module Transports ([addons/transit/index.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/transit/index.ts)) en est l’exemple :
+Pour choisir un arrêt, une station ou une direction sans taper d’identifiant, déclarez `search` : une liste `fields` et une fonction `find(input, context)`. Le module Transports ([addons/transit/index.ts](https://github.com/lfpoulain/Cornelius/blob/main/addons/transit/index.ts)) en est l’exemple :
 
 ```ts
 fields: [
@@ -346,8 +346,8 @@ Indique ce qui est testé et ce qui reste à essayer avec le vrai fournisseur et
 ## Voir aussi
 
 - [Créer un module](creer-un-module.md)
-- [Les modules](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/README.md)
-- [Architecture](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/developpement/architecture.md)
-- [Tests et recette](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/developpement/tests-et-recette.md)
-- [Configuration](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/reference/configuration.md)
-- Code : [shared/addons.ts](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/shared/addons.ts), [server/addons/](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/server/addons/), [addons/_template](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/_template/)
+- [Les modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md)
+- [Architecture](https://github.com/lfpoulain/Cornelius/blob/main/docs/developpement/architecture.md)
+- [Tests et recette](https://github.com/lfpoulain/Cornelius/blob/main/docs/developpement/tests-et-recette.md)
+- [Configuration](https://github.com/lfpoulain/Cornelius/blob/main/docs/reference/configuration.md)
+- Code : [shared/addons.ts](https://github.com/lfpoulain/Cornelius/blob/main/shared/addons.ts), [server/addons/](https://github.com/lfpoulain/Cornelius/blob/main/server/addons/), [addons/_template](https://github.com/lfpoulain/Cornelius/blob/main/addons/_template/)

@@ -1,6 +1,6 @@
 # Cornelius · modules
 
-Les modules externes de [Cornelius](https://git.diy.yt/lfpoulain/cornelius), le miroir qui parle. Ils ajoutent des informations à demander à la voix ou à garder affichées sur le miroir. On les met à jour avec un `git pull`, **sans mettre à jour Cornelius**.
+Les modules externes de [Cornelius](https://github.com/lfpoulain/Cornelius), le miroir qui parle. Ils ajoutent des informations à demander à la voix ou à garder affichées sur le miroir. On les met à jour avec un `git pull`, **sans mettre à jour Cornelius**.
 
 Cornelius livre ses modules de base (heure, météo, transports, Ragator) dans son propre dossier `addons/`. Ce dépôt accueille tous les autres : ceux qui évoluent à leur rythme, ceux qui ne servent qu’à certains foyers, ceux d’autres auteurs.
 
@@ -18,7 +18,7 @@ GitHub/
 Clonez ce dépôt **à côté** du dossier de Cornelius, puis redémarrez Cornelius :
 
 ```bash
-git clone https://git.diy.yt/lfpoulain/cornelius-modules.git
+git clone https://github.com/lfpoulain/cornelius-modules.git
 ```
 
 Au démarrage, Cornelius cherche `cornelius-modules` dans le même dossier que lui. Les modules apparaissent dans **Administration → Modules**, et se règlent comme les autres : une ou plusieurs sources, un propriétaire, un jeton si le fournisseur en demande un.
@@ -103,7 +103,7 @@ Un module s’exécute dans le serveur de Cornelius, avec les mêmes droits que 
 - [Créer un module](docs/creer-un-module.md) : le tutoriel, du gabarit à l’essai à la voix
 - [Référence du contrat](docs/reference.md) : toutes les règles (copie de celle de Cornelius, qui fait foi)
 - [Fiche d’un module](_template/README.md) : le modèle à remplir pour chaque module
-- [Les modules dans Cornelius](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/README.md) : sources, jetons et catalogue, côté administration
+- [Les modules dans Cornelius](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md) : sources, jetons et catalogue, côté administration
 
 ## Licence
 

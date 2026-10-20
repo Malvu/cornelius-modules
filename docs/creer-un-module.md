@@ -2,9 +2,9 @@
 
 Ce tutoriel construit pas à pas, dans ce dépôt, un module d’informations à partir du gabarit : un module « parking » qui annonce les places libres. Il s’adresse à une développeuse ou un développeur à l’aise avec TypeScript. Les règles complètes du contrat sont dans la [référence](reference.md).
 
-Un module d’informations lit une source, garde des données propres et fournit la réponse orale et la carte. Pour déclencher une action (ouvrir un portail), utilisez plutôt une [commande HTTP](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/README.md#les-commandes-http) de Cornelius : aucun code n’est nécessaire.
+Un module d’informations lit une source, garde des données propres et fournit la réponse orale et la carte. Pour déclencher une action (ouvrir un portail), utilisez plutôt une [commande HTTP](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md#les-commandes-http) de Cornelius : aucun code n’est nécessaire.
 
-Ce tutoriel construit une lecture ordinaire, la même à chaque appel et gardée en cache. Pour un module qui répond à une question libre (chercher dans des documents, interroger un service), suivez les mêmes étapes, puis déclarez un [outil à la demande](reference.md#loutil-à-la-demande) : `collect` reçoit alors la question dans `context.query`. Le module livré [Ragator](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/ragator/index.ts) en est l’exemple.
+Ce tutoriel construit une lecture ordinaire, la même à chaque appel et gardée en cache. Pour un module qui répond à une question libre (chercher dans des documents, interroger un service), suivez les mêmes étapes, puis déclarez un [outil à la demande](reference.md#loutil-à-la-demande) : `collect` reçoit alors la question dans `context.query`. Le module livré [Ragator](https://github.com/lfpoulain/Cornelius/blob/main/addons/ragator/index.ts) en est l’exemple.
 
 ## Avant de commencer
 
@@ -244,5 +244,5 @@ ce qui est testé et ce qui reste à essayer avec le vrai fournisseur et à la v
 
 - [Référence du contrat des modules](reference.md)
 - [Fiche à remplir](../_template/README.md)
-- [Les modules dans Cornelius](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/docs/modules/README.md) : sources, jetons, catalogue
-- Modules livrés, comme exemples : [Heure](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/clock/README.md), [Météo](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/weather/README.md), [Transports](https://git.diy.yt/lfpoulain/cornelius/src/branch/main/addons/transit/README.md)
+- [Les modules dans Cornelius](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md) : sources, jetons, catalogue
+- Modules livrés, comme exemples : [Heure](https://github.com/lfpoulain/Cornelius/blob/main/addons/clock/README.md), [Météo](https://github.com/lfpoulain/Cornelius/blob/main/addons/weather/README.md), [Transports](https://github.com/lfpoulain/Cornelius/blob/main/addons/transit/README.md)
