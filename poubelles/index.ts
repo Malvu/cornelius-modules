@@ -1,15 +1,16 @@
 /** Poubelles : quel bac sortir, d'après le calendrier de ramassage écrit en toutes lettres. */
 import { AddonCollectError, type AddonDefinition } from '#cornelius/addons';
+import { dayIn, dayMs, iso, nextMidnight, nextWallTime, wallIn } from '../_lib/temps.js';
 import configSchema from './config.schema.json' with { type: 'json' };
 import dataSchema from './data.schema.json' with { type: 'json' };
 
-type Kind = 'menager' | 'emballages' | 'verre' | 'biodechets' | 'vegetaux';
-type PoubellesConfig = Record<Kind, string | null> & { veille: boolean };
+type Kind = 'menager' | 'emballages' | 'verre' | 'biodechets' | 'vegetaux' | 'encombrants';
+type PoubellesConfig = { bacs: { bac: Kind; jours: string }[]; veille: boolean };
 type Rule = { weekdays: number[]; parity: 'all' | 'even' | 'odd'; ordinals: number[] };
 type Bin = Rule & { kind: Kind };
 type PoubellesData = { bins: Bin[]; veille: boolean };
 
-const kinds: Kind[] = ['menager', 'emballages', 'verre', 'biodechets', 'vegetaux'];
+const kinds: Kind[] = ['menager', 'emballages', 'verre', 'biodechets', 'vegetaux', 'encombrants'];
 
 /** Libellé de carte, et ce qu'on « sort » à l'oral. */
 const names: Record<Kind, { label: string; spoken: string }> = {
@@ -18,7 +19,19 @@ const names: Record<Kind, { label: string; spoken: string }> = {
   verre: { label: 'Verre', spoken: 'le verre' },
   biodechets: { label: 'Biodéchets', spoken: 'les biodéchets' },
   vegetaux: { label: 'Déchets verts', spoken: 'les déchets verts' },
+  encombrants: { label: 'Encombrants', spoken: 'les encombrants' },
 };
+
+/** Réglages de la version 1 (un champ par bac) vers la liste de la version 2. */
+function migrate(fromVersion: number, config: unknown): PoubellesConfig {
+  if (fromVersion !== 1 || !config || typeof config !== 'object')
+    throw new Error(`Réglages poubelles v${fromVersion} inconnus.`);
+  const old = config as Record<string, unknown>;
+  const bacs = (['menager', 'emballages', 'verre', 'biodechets', 'vegetaux'] as const)
+    .filter((kind) => typeof old[kind] === 'string' && (old[kind] as string).trim())
+    .map((kind) => ({ bac: kind, jours: (old[kind] as string).trim() }));
+  return { bacs, veille: old.veille !== false };
+}
 
 // --- Lecture des règles en toutes lettres -----------------------------------------------------
 
@@ -114,28 +127,12 @@ export function parseRule(text: string): Rule {
 
 // --- Calendrier ------------------------------------------------------------------------------
 
-const parisParts = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  hourCycle: 'h23',
-});
 const longDay = new Intl.DateTimeFormat('fr-FR', {
   timeZone: 'UTC',
   weekday: 'long',
   day: 'numeric',
   month: 'long',
 });
-const dayMs = 86_400_000;
-
-/** Jour (en jours depuis 1970) et heure, à Paris. */
-function parisNow(now: number): { day: number; hour: number } {
-  const parts = Object.fromEntries(parisParts.formatToParts(now).map((p) => [p.type, p.value]));
-  const day = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) / dayMs;
-  return { day, hour: Number(parts.hour) };
-}
 
 function weekday(day: number): number {
   return ((new Date(day * dayMs).getUTCDay() + 6) % 7) + 1;
@@ -170,15 +167,22 @@ function spokenDay(day: number): string {
 
 /**
  * Le ramassage du jour compte jusqu'à midi ; après, on regarde le suivant. Avec la
- * veille au soir, un ramassage du lendemain s'annonce dès 17 h.
+ * veille au soir, un ramassage du lendemain s'annonce dès 17 h. Un bac décrit sur plusieurs
+ * lignes (deux rythmes) ne compte qu'une fois, à sa date la plus proche. Heures du foyer.
  */
-function schedule(data: PoubellesData, now: number) {
-  const { day: today, hour } = parisNow(now);
+function schedule(data: PoubellesData, now: number, zone: string) {
+  const today = dayIn(now, zone);
+  const hour = wallIn(now, zone).hour;
   const from = hour < 12 ? today : today + 1;
-  const upcoming = data.bins
-    .map((bin) => ({ bin, day: nextDay(bin, from) }))
-    .filter((entry): entry is { bin: Bin; day: number } => entry.day !== null)
-    .sort((a, b) => a.day - b.day || kinds.indexOf(a.bin.kind) - kinds.indexOf(b.bin.kind));
+  const byKind = new Map<Kind, { bin: Bin; day: number }>();
+  for (const bin of data.bins) {
+    const day = nextDay(bin, from);
+    const known = byKind.get(bin.kind);
+    if (day !== null && (!known || day < known.day)) byKind.set(bin.kind, { bin, day });
+  }
+  const upcoming = [...byKind.values()].sort(
+    (a, b) => a.day - b.day || kinds.indexOf(a.bin.kind) - kinds.indexOf(b.bin.kind),
+  );
   const first = upcoming[0]?.day ?? null;
   const next = upcoming.filter((entry) => entry.day === first);
   const tonight = data.veille && first === today + 1 && hour >= 17;
@@ -199,25 +203,45 @@ function joinSpoken(items: string[]): string {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
+/** La carte permanente change à midi (fin du ramassage du jour), à 17 h et à minuit. */
+function nextChange(now: number, zone: string, veille: boolean): string {
+  return iso(
+    Math.min(
+      nextWallTime(now, zone, 12),
+      ...(veille ? [nextWallTime(now, zone, 17)] : []),
+      nextMidnight(now, zone),
+    ),
+  );
+}
+
 const addon: AddonDefinition<PoubellesConfig, PoubellesData> = {
   id: 'poubelles',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Ramassage des poubelles',
-  configVersion: 1,
+  display: {
+    name: 'Poubelles',
+    description: 'Quel bac sortir et quand, d’après le calendrier de ramassage de la commune.',
+    icon: 'trash-2',
+    keywords: ['poubelles', 'déchets', 'ramassage', 'collecte', 'tri', 'verre', 'emballages'],
+    example: { label: 'Poubelles de la maison', ref: 'maison' },
+    spoken: { head: 'les poubelles', repeats: ['poubelles', 'poubelle', 'dechets', 'ramassage'] },
+  },
+  configVersion: 2,
   configSchema,
+  configMigrate: migrate,
   configDefaults: {
-    menager: 'lundi et jeudi',
-    emballages: 'mercredi semaines paires',
-    verre: null,
-    biodechets: null,
-    vegetaux: null,
+    bacs: [
+      { bac: 'menager', jours: 'lundi et jeudi' },
+      { bac: 'emballages', jours: 'mercredi semaines paires' },
+    ],
     veille: true,
   },
   dataVersion: 1,
   dataSchema,
   // Aucun réseau : le calendrier ne change qu'avec les réglages, la date est recalculée.
-  freshMs: 60 * 60 * 1000,
+  freshMs: 24 * 60 * 60 * 1000,
   tools: [
     {
       name: 'read',
@@ -235,8 +259,8 @@ const addon: AddonDefinition<PoubellesConfig, PoubellesData> = {
   ],
   async collect(context) {
     const bins: Bin[] = [];
-    for (const kind of kinds) {
-      const text = context.config[kind]?.trim();
+    for (const { bac: kind, jours } of context.config.bacs) {
+      const text = jours.trim();
       if (!text) continue;
       try {
         bins.push({ kind, ...parseRule(text) });
@@ -260,7 +284,11 @@ const addon: AddonDefinition<PoubellesConfig, PoubellesData> = {
     present(snapshot, context) {
       const data = snapshot.data;
       if (!data) throw new Error('Aucun calendrier à afficher.');
-      const { today, upcoming, next, first, tonight } = schedule(data, context.now());
+      const { today, upcoming, next, first, tonight } = schedule(
+        data,
+        context.now(),
+        context.timeZone,
+      );
       const later = upcoming.filter((entry) => entry.day !== first).slice(0, 2);
       return {
         layout: 'metric',
@@ -272,13 +300,18 @@ const addon: AddonDefinition<PoubellesConfig, PoubellesData> = {
           label: names[entry.bin.kind].label,
           value: capitalize(when(entry.day, today)),
         })),
+        refreshAt: nextChange(context.now(), context.timeZone, data.veille),
       };
     },
   },
   present(snapshot, context) {
     const data = snapshot.data;
     if (!data) throw new Error('Aucun calendrier à présenter.');
-    const { today, upcoming, next, first, tonight } = schedule(data, context.now());
+    const { today, upcoming, next, first, tonight } = schedule(
+      data,
+      context.now(),
+      context.timeZone,
+    );
     const spoken = joinSpoken(next.map((entry) => names[entry.bin.kind].spoken));
     let summary: string;
     let primaryValue: string | null;

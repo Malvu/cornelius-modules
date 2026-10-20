@@ -1,14 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-  AddonRepository,
-  AddonRuntime,
-  openDatabase,
-  validateAddonDefinition,
-} from '#cornelius/testing';
-import type { AddonHttpClient, AddonHttpRequest } from '#cornelius/addons';
-import { validators } from '#cornelius/validation';
+import { createTestModule, type TestReply } from '#cornelius/testing';
+import type { AddonHttpRequest } from '#cornelius/addons';
 import addon from './index.js';
 
 /**
@@ -29,31 +23,20 @@ const tbm =
   'https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3/gbfs.json?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt';
 const star = 'https://eu.ftp.opendatasoft.com/star/gbfs/gbfs.json';
 
-function client(
-  calls: AddonHttpRequest[],
-  override?: (url: string) => string | null,
-): AddonHttpClient {
-  return {
-    async fetch(request) {
-      calls.push(request);
-      const url = request.url;
-      const body =
-        override?.(url) ??
-        (url.includes('raw.githubusercontent.com')
-          ? fixture('systems.csv')
-          : (() => {
-              const prefix = Object.entries(systems).find(([host]) => url.includes(host))?.[1];
-              const feed = /\/([a-z_]+)\.json/u.exec(new URL(url).pathname)?.[1];
-              return prefix && feed ? fixture(`${prefix}-${feed}.json`) : null;
-            })());
-      const status = body === null ? 404 : 200;
-      return {
-        status,
-        headers: {},
-        text: () => body ?? '',
-        json: () => JSON.parse(body ?? '') as unknown,
-      };
-    },
+/** Réseau simulé : catalogue, puis chaque flux d'un réseau par son hôte et son nom. */
+function network(override?: (url: string) => string | null) {
+  return (request: AddonHttpRequest): TestReply => {
+    const url = request.url;
+    const body =
+      override?.(url) ??
+      (url.includes('raw.githubusercontent.com')
+        ? fixture('systems.csv')
+        : (() => {
+            const prefix = Object.entries(systems).find(([host]) => url.includes(host))?.[1];
+            const feed = /\/([a-z_]+)\.json/u.exec(new URL(url).pathname)?.[1];
+            return prefix && feed ? fixture(`${prefix}-${feed}.json`) : null;
+          })());
+    return body === null ? { status: 404 } : body;
   };
 }
 
@@ -62,41 +45,22 @@ function setup(
   config: Record<string, unknown> = {},
   override?: (url: string) => string | null,
 ) {
-  const db = openDatabase(':memory:');
-  t.after(() => db.close());
-  const instances = new AddonRepository(db);
-  const instance = instances.createInstance({
-    addonId: addon.id,
-    profileId: null,
-    ref: 'station',
-    label: 'Vélos du coin',
-    config: { ...addon.configDefaults, ...config },
-    configVersion: addon.configVersion,
+  return createTestModule(t, addon, {
+    config,
+    at: '2026-10-20T13:15:00Z',
+    routes: network(override),
   });
-  const calls: AddonHttpRequest[] = [];
-  const runtime = new AddonRuntime({
-    addons: [addon],
-    instances,
-    now: () => Date.parse('2026-10-20T13:15:00Z'),
-    http: client(calls, override),
-  });
-  return {
-    runtime,
-    instance,
-    calls,
-    read: () => runtime.read(addon.id, null, 'station', new AbortController().signal),
-  };
 }
 
-const searchContext = (calls: AddonHttpRequest[]) => ({
-  http: client(calls),
-  signal: new AbortController().signal,
-  secret: () => undefined,
-});
+const find = (
+  f: ReturnType<typeof setup>,
+  kind: string,
+  query: string,
+  values: Record<string, unknown> = {},
+) => f.runtime.search(addon.id, { kind, query, values }, new AbortController().signal);
 
-test('définition v1, configuration, snapshot, carte et résultat outil conformes', async (t) => {
+test('définition, réglages et contrat ; chaque fichier passe par le cache partagé', async (t) => {
   const f = setup(t);
-  assert.equal(validateAddonDefinition(addon), null);
   assert.equal(f.runtime.validateConfig(addon.id, addon.configDefaults).ok, true);
   for (const patch of [{ systemUrl: 'http://exemple.fr/gbfs.json' }, { stationId: 'a b' }])
     assert.equal(
@@ -105,12 +69,12 @@ test('définition v1, configuration, snapshot, carte et résultat outil conforme
       JSON.stringify(patch),
     );
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(validators.moduleSnapshot(result.snapshot), true);
-  assert.equal(validators.moduleCard(result.card), true);
-  assert.equal(validators.ambientPresentation(f.runtime.ambientDisplay(f.instance).content), true);
-  assert.equal(validators.toolResult(f.runtime.toolResult(result)), true);
+  assert.deepEqual(f.contract(result), []);
+  // Découverte et état du réseau sont partagés entre sources : 10 minutes et 30 secondes.
+  assert.deepEqual(
+    f.calls.map((call) => call.cacheMs),
+    [600_000, 30_000],
+  );
 });
 
 test('Vélib’ (GBFS 2.x) : vélos mécaniques et électriques, places libres', async (t) => {
@@ -169,7 +133,7 @@ test('LE vélo STAR : station fermée, puis station sans type de vélo connu', a
   assert.equal(closed.card.primaryValue, 'Station fermée');
   assert.deepEqual(closed.card.items, []);
   assert.equal(closed.presentation.summary, 'La station République est fermée pour le moment.');
-  assert.equal(f.runtime.ambientDisplay(f.instance).content?.value, 'Fermée');
+  assert.equal(f.ambient().content?.value, 'Fermée');
 
   const g = setup(t, {
     systemUrl: star,
@@ -217,60 +181,39 @@ test('station disparue du réseau, réseau sans état des stations', async (t) =
   if (!free.ok) assert.equal(free.error.message, 'Ce réseau ne publie pas l’état de ses stations.');
 });
 
-test('recherche du réseau : par ville, sans autopartage ni trottinettes, hors de France proche', async () => {
-  const calls: AddonHttpRequest[] = [];
-  const context = searchContext(calls);
-  const rennes = await addon.search!.find({ kind: 'system', query: 'rennes', values: {} }, context);
-  assert.deepEqual(rennes, [
+test('recherche du réseau : par ville, sans autopartage ni trottinettes, hors de France proche', async (t) => {
+  const f = setup(t);
+  assert.deepEqual(await find(f, 'system', 'rennes'), [
     {
       id: 'https://eu.ftp.opendatasoft.com/star/gbfs/gbfs.json',
       label: 'LE vélo STAR',
       detail: 'Rennes',
     },
   ]);
-  const bordeaux = await addon.search!.find(
-    { kind: 'system', query: 'Bordeaux', values: {} },
-    context,
-  );
   assert.deepEqual(
-    bordeaux.map((r) => r.label),
+    (await find(f, 'system', 'Bordeaux')).map((r) => r.label),
     ['Le Vélo par TBM'],
   );
-  const velib = await addon.search!.find({ kind: 'system', query: 'velib', values: {} }, context);
   assert.deepEqual(
-    velib.map((r) => r.label),
+    (await find(f, 'system', 'velib')).map((r) => r.label),
     ["Vélib' Metropole", 'Vélibéo'],
   );
-  const brussels = await addon.search!.find(
-    { kind: 'system', query: 'villo', values: {} },
-    context,
-  );
-  assert.equal(brussels.length, 1);
+  assert.equal((await find(f, 'system', 'villo')).length, 1);
+  // Le catalogue (180 Ko) est partagé dix minutes entre les recherches.
+  assert.ok(f.calls.every((call) => call.cacheMs === 600_000));
 });
 
-test('recherche de la station : par son nom, sans accents, avec adresse et capacité', async () => {
-  const calls: AddonHttpRequest[] = [];
-  const context = searchContext(calls);
-  const found = await addon.search!.find(
-    { kind: 'station', query: 'hotel de region', values: { systemUrl: tbm } },
-    context,
-  );
-  assert.deepEqual(found, [
+test('recherche de la station : par son nom, sans accents, avec adresse et capacité', async (t) => {
+  const f = setup(t);
+  assert.deepEqual(await find(f, 'station', 'hotel de region', { systemUrl: tbm }), [
     {
       id: '2',
       label: 'Saint-Bruno - Hôtel de Région',
       detail: 'RUE FRANÇOIS DE SOURDIS (CIMETIÈRE DE LA CHARTREUSE) , BORDEAUX · 20 places',
     },
   ]);
-  assert.deepEqual(
-    await addon.search!.find(
-      { kind: 'station', query: 'godard', values: { systemUrl: velib } },
-      context,
-    ),
-    [{ id: '213688169', label: 'Benjamin Godard - Victor Hugo', detail: '35 places' }],
-  );
-  assert.deepEqual(
-    await addon.search!.find({ kind: 'station', query: 'opéra', values: {} }, context),
-    [],
-  );
+  assert.deepEqual(await find(f, 'station', 'godard', { systemUrl: velib }), [
+    { id: '213688169', label: 'Benjamin Godard - Victor Hugo', detail: '35 places' },
+  ]);
+  assert.deepEqual(await find(f, 'station', 'opéra'), []);
 });

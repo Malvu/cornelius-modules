@@ -8,8 +8,6 @@ type ActuConfig = { url: string; count: number };
 type Headline = { title: string; published: string | null; summary: string | null };
 type ActuData = { feed: string; items: Headline[] };
 
-const userAgent = 'Cornelius-modules/1.0 (https://github.com/lfpoulain/cornelius-modules)';
-
 /** Nom court du journal : « Le Monde.fr - Actualités et Infos… » devient « Le Monde.fr ». */
 function feedName(title: string | null, url: string): string {
   const name = title?.split(/\s+[-–|:]\s+/u)[0]?.trim();
@@ -26,8 +24,17 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 const addon: AddonDefinition<ActuConfig, ActuData> = {
   id: 'actu',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Titres de l’actualité',
+  display: {
+    name: 'Titres de l’actualité',
+    description: 'Les premiers titres d’un journal, d’après son flux RSS ou Atom.',
+    icon: 'newspaper',
+    keywords: ['actualité', 'actu', 'nouvelles', 'titres', 'journal', 'rss', 'infos'],
+    example: { label: 'Les titres', ref: 'titres' },
+    spoken: { head: 'les titres', repeats: ['titres', 'actu', 'actualite', 'infos'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: { url: 'https://www.franceinfo.fr/titres.rss', count: 3 },
@@ -55,7 +62,6 @@ const addon: AddonDefinition<ActuConfig, ActuData> = {
       url,
       method: 'GET',
       headers: {
-        'User-Agent': userAgent,
         Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml',
       },
       signal: context.signal,

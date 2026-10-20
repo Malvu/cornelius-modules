@@ -2,6 +2,7 @@
 import { AddonCollectError, type AddonDefinition } from '#cornelius/addons';
 import { compile } from '#cornelius/validation';
 import { clip } from '../_lib/flux.js';
+import { dateIn, nextMidnight, wallIn } from '../_lib/temps.js';
 import configSchema from './config.schema.json' with { type: 'json' };
 import dataSchema from './data.schema.json' with { type: 'json' };
 
@@ -12,8 +13,6 @@ type EphemerideData = { day: string; events: Event[] };
 type Payload = { selected: { text: string; year?: number; pages?: { title?: string }[] }[] };
 
 const baseUrl = 'https://fr.wikipedia.org/api/rest_v1/feed/onthisday/selected';
-/** Wikimedia demande d'identifier les programmes qui l'interrogent. */
-const userAgent = 'Cornelius-modules/1.0 (https://github.com/lfpoulain/cornelius-modules)';
 
 const validatePayload = compile<Payload>({
   type: 'object',
@@ -34,22 +33,15 @@ const validatePayload = compile<Payload>({
   },
 });
 
-const parisDay = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris',
-  month: '2-digit',
-  day: '2-digit',
-});
-const parisYear = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric' });
 const dayName = new Intl.DateTimeFormat('fr-FR', {
   timeZone: 'UTC',
   day: 'numeric',
   month: 'long',
 });
 
-/** « 10-20 » pour le 20 octobre, à Paris. */
-function monthDay(now: number): string {
-  const parts = Object.fromEntries(parisDay.formatToParts(now).map((p) => [p.type, p.value]));
-  return `${parts.month}-${parts.day}`;
+/** « 10-20 » pour le 20 octobre, dans le fuseau du foyer. */
+function monthDay(now: number, zone: string): string {
+  return dateIn(now, zone).slice(5);
 }
 
 function spokenDay(day: string): string {
@@ -82,8 +74,8 @@ function sentence(text: string): string {
   return /[.!?…»]$/u.test(trimmed) ? trimmed : `${trimmed}.`;
 }
 
-function ranked(data: EphemerideData, now: number): (Event & { years: number })[] {
-  const current = Number(parisYear.format(now));
+function ranked(data: EphemerideData, now: number, zone: string): (Event & { years: number })[] {
+  const current = wallIn(now, zone).year;
   return data.events
     .map((event) => ({ ...event, years: current - event.year }))
     .filter((event) => event.years >= 1)
@@ -93,14 +85,23 @@ function ranked(data: EphemerideData, now: number): (Event & { years: number })[
 const addon: AddonDefinition<EphemerideConfig, EphemerideData> = {
   id: 'ephemeride',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Éphéméride Wikipédia',
+  display: {
+    name: 'Éphéméride',
+    description: 'Ce qui s’est passé un jour comme aujourd’hui, d’après Wikipédia.',
+    icon: 'scroll-text',
+    keywords: ['éphéméride', 'histoire', 'ce jour-là', 'anniversaire', 'wikipédia'],
+    example: { label: 'Éphéméride', ref: 'jour' },
+    spoken: { head: 'l’éphéméride', repeats: ['ephemeride', 'histoire'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: { count: 3 },
   dataVersion: 1,
   dataSchema,
-  freshMs: 60 * 60 * 1000,
+  freshMs: 24 * 60 * 60 * 1000,
   tools: [
     {
       name: 'read',
@@ -116,11 +117,12 @@ const addon: AddonDefinition<EphemerideConfig, EphemerideData> = {
     },
   ],
   async collect(context) {
-    const day = monthDay(context.now());
+    const day = monthDay(context.now(), context.timeZone);
     const response = await context.http.fetch({
       url: `${baseUrl}/${day.replace('-', '/')}`,
       method: 'GET',
-      headers: { 'User-Agent': userAgent, Accept: 'application/json' },
+      // Wikimedia exige qu'un programme se présente : le cœur envoie « Cornelius/x.y.z ».
+      headers: { Accept: 'application/json' },
       signal: context.signal,
       timeoutMs: 8000,
       maxBytes: 1024 * 1024,
@@ -155,12 +157,14 @@ const addon: AddonDefinition<EphemerideConfig, EphemerideData> = {
       }));
     // Les plus marquants d'abord, au rang qu'ils auront aujourd'hui.
     const data: EphemerideData = { day, events };
-    data.events = ranked(data, context.now())
+    data.events = ranked(data, context.now(), context.timeZone)
       .slice(0, context.config.count)
       .map(({ years: _years, ...event }) => event);
     return {
       data,
       empty: data.events.length === 0,
+      // Les événements valent pour la journée : relus à minuit, pas avant.
+      freshMs: Math.max(5 * 60_000, nextMidnight(context.now(), context.timeZone) - context.now()),
       source: { provider: 'wikipedia-fr', sourceId: day },
     };
   },
@@ -168,7 +172,7 @@ const addon: AddonDefinition<EphemerideConfig, EphemerideData> = {
     present(snapshot, context) {
       const data = snapshot.data;
       if (!data?.events.length) throw new Error('Aucun événement à afficher.');
-      const events = ranked(data, context.now()).slice(0, 3);
+      const events = ranked(data, context.now(), context.timeZone).slice(0, 3);
       return {
         layout: 'list',
         showCollectedAt: false,
@@ -185,9 +189,9 @@ const addon: AddonDefinition<EphemerideConfig, EphemerideData> = {
   present(snapshot, context) {
     const data = snapshot.data;
     if (!data?.events.length) throw new Error('Aucun événement à présenter.');
-    const events = ranked(data, context.now());
+    const events = ranked(data, context.now(), context.timeZone);
     const first = events[0]!;
-    const today = monthDay(context.now()) === data.day;
+    const today = monthDay(context.now(), context.timeZone) === data.day;
     const when = today ? 'Un jour comme aujourd’hui' : `Un ${spokenDay(data.day)}`;
     return {
       title: `Éphéméride · ${spokenDay(data.day)}`,

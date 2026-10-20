@@ -1,72 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  AddonRepository,
-  AddonRuntime,
-  openDatabase,
-  validateAddonDefinition,
-} from '#cornelius/testing';
-import type { AddonHttpClient, AddonHttpRequest } from '#cornelius/addons';
-import { validators } from '#cornelius/validation';
+import { createTestModule } from '#cornelius/testing';
 import addon from './index.js';
 // Réponses réelles du flux instantané (données publiques), le 20/10/2026.
 import station from './fixtures/station-35743001.json' with { type: 'json' };
 import search from './fixtures/recherche-35740.json' with { type: 'json' };
 
-type Reply = { status: number; body: string };
-
-function client(reply: () => Reply, calls: AddonHttpRequest[]): AddonHttpClient {
-  return {
-    async fetch(request) {
-      calls.push(request);
-      const { status, body } = reply();
-      return { status, headers: {}, text: () => body, json: () => JSON.parse(body) as unknown };
-    },
-  };
-}
-
-function setup(
+const setup = (
   t: { after(fn: () => void): void },
   config: Record<string, unknown> = {},
   at = '2026-10-20T10:00:00Z',
-) {
-  const db = openDatabase(':memory:');
-  t.after(() => db.close());
-  const instances = new AddonRepository(db);
-  const instance = instances.createInstance({
-    addonId: addon.id,
-    profileId: null,
-    ref: 'station',
-    label: 'Station de Pacé',
-    config: { ...addon.configDefaults, ...config },
-    configVersion: addon.configVersion,
+) =>
+  createTestModule(t, addon, {
+    config,
+    at,
+    routes: { 'where=id%3D35743001': station, 'where=cp': search, 'where=search': search },
   });
-  let reply: Reply = { status: 200, body: JSON.stringify(station) };
-  const calls: AddonHttpRequest[] = [];
-  const runtime = new AddonRuntime({
-    addons: [addon],
-    instances,
-    now: () => Date.parse(at),
-    http: client(() => reply, calls),
-  });
-  return {
-    runtime,
-    instance,
-    calls,
-    read: () => runtime.read(addon.id, null, 'station', new AbortController().signal),
-    reply: (next: Reply) => {
-      reply = next;
-    },
-  };
-}
 
-const decoded = (request: AddonHttpRequest | undefined) =>
-  decodeURIComponent((request?.url ?? '').replace(/\+/gu, ' '));
+const decoded = (url: string | undefined) => decodeURIComponent((url ?? '').replace(/\+/gu, ' '));
 
-test('définition v1, configuration, snapshot, carte et résultat outil conformes', async (t) => {
+test('définition, réglages, contrat et requête de la station', async (t) => {
   const f = setup(t);
-  assert.equal(validateAddonDefinition(addon), null);
   assert.equal(f.runtime.validateConfig(addon.id, addon.configDefaults).ok, true);
+  assert.equal(
+    f.runtime.validateConfig(addon.id, { ...addon.configDefaults, fuel: null }).ok,
+    true,
+    '« Tous » est un choix',
+  );
   for (const patch of [{ stationId: '1 or 1=1' }, { fuel: 'diesel' }, { stationLabel: '' }])
     assert.equal(
       f.runtime.validateConfig(addon.id, { ...addon.configDefaults, ...patch }).ok,
@@ -74,13 +34,8 @@ test('définition v1, configuration, snapshot, carte et résultat outil conforme
       JSON.stringify(patch),
     );
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(validators.moduleSnapshot(result.snapshot), true);
-  assert.equal(validators.moduleCard(result.card), true);
-  assert.equal(validators.ambientPresentation(f.runtime.ambientDisplay(f.instance).content), true);
-  assert.equal(validators.toolResult(f.runtime.toolResult(result)), true);
-  assert.match(decoded(f.calls[0]), /where=id=35743001&limit=1$/u);
+  assert.deepEqual(f.contract(result), []);
+  assert.match(decoded(f.calls[0]?.url), /where=id=35743001&limit=1$/u);
 });
 
 test('les prix de la station, carburant principal d’abord, au centime près à l’oral', async (t) => {
@@ -105,11 +60,19 @@ test('les prix de la station, carburant principal d’abord, au centime près à
   );
 });
 
-test('un autre carburant principal passe en tête', async (t) => {
+test('un autre carburant principal, réglé ou demandé à la voix, passe en tête', async (t) => {
   const f = setup(t, { fuel: 'e85' });
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (result.ok) assert.equal(result.card.primaryValue, 'E85 0,920 €');
+  assert.equal(result.ok && result.card.primaryValue, 'E85 0,920 €');
+  // « Et le GPL ? » : argument typé, lecture à la demande.
+  const asked = await setup(t).invoke('read', { carburant: 'gplc' });
+  assert.equal(asked.outcome.ok && asked.outcome.card.primaryValue, 'GPL 0,936 €');
+  assert.match(asked.tool.summary, /: GPL à 94 centimes/u);
+  // Absent de cette station : dit en tête, puis les prix qui existent.
+  const missing = await setup(t).invoke('read', { carburant: 'sp95' });
+  assert.match(missing.tool.summary, /^Pas de sans-plomb 95 à cette station. À Pacé/u);
+  const unknown = await setup(t).invoke('read', { carburant: 'diesel' });
+  assert.equal(unknown.tool.error?.code, 'invalid_params');
 });
 
 test('des prix anciens sont signalés à leur date', async (t) => {
@@ -126,11 +89,12 @@ test('des prix anciens sont signalés à leur date', async (t) => {
 
 test('station disparue, sans aucun prix, ou service en panne', async (t) => {
   const f = setup(t);
-  f.reply({ status: 200, body: '{"total_count": 0, "results": []}' });
+  f.route({ 'where=id': { total_count: 0, results: [] } });
   const gone = await f.read();
   assert.equal(gone.ok, false);
   if (!gone.ok) assert.equal(gone.error.code, 'not_found');
 
+  // Aucun prix publié : rien à signaler, et le module le dit.
   const g = setup(t);
   const bare = {
     ...station.results[0]!,
@@ -139,30 +103,27 @@ test('station disparue, sans aucun prix, ou service en panne', async (t) => {
     e85_prix: null,
     gplc_prix: null,
   };
-  g.reply({ status: 200, body: JSON.stringify({ results: [bare] }) });
-  const empty = await g.read();
-  assert.equal(empty.ok, false);
-  if (!empty.ok) assert.equal(empty.status, 'empty');
+  g.route({ 'where=id': { results: [bare] } });
+  const empty = await g.invoke();
+  assert.equal(empty.tool.status, 'empty');
+  assert.equal(
+    empty.tool.summary,
+    'La station de Pacé, boulevard Giraudais, ne publie aucun prix pour le moment.',
+  );
+  assert.equal(g.ambient().content?.value, 'Aucun prix');
 
   const h = setup(t);
-  h.reply({ status: 503, body: '' });
+  h.route({ 'where=id': { status: 503 } });
   const down = await h.read();
   assert.equal(down.ok, false);
   if (!down.ok) assert.equal(down.error.code, 'unavailable');
 });
 
-test('recherche assistée : code postal exact, nom de commune, guillemets retirés', async () => {
-  const calls: AddonHttpRequest[] = [];
-  const context = {
-    http: client(() => ({ status: 200, body: JSON.stringify(search) }), calls),
-    signal: new AbortController().signal,
-    secret: () => undefined,
-  };
-  const results = await addon.search!.find(
-    { kind: 'station', query: '35740', values: {} },
-    context,
-  );
-  assert.match(decoded(calls[0]), /where=cp="35740"/u);
+test('recherche assistée : code postal exact, nom de commune, guillemets retirés', async (t) => {
+  const f = setup(t);
+  const signal = new AbortController().signal;
+  const results = await f.runtime.search(addon.id, { kind: 'station', query: '35740' }, signal);
+  assert.match(decoded(f.calls[0]?.url), /where=cp="35740"/u);
   assert.equal(results.length, search.results.length);
   assert.deepEqual(
     results.find((r) => r.id === '35743001'),
@@ -172,11 +133,8 @@ test('recherche assistée : code postal exact, nom de commune, guillemets retir�
       detail: '35740 · Gazole 2,338 € · SP95-E10 2,144 € · E85 0,920 €',
     },
   );
-  await addon.search!.find({ kind: 'station', query: 'Pacé" or "1', values: {} }, context);
-  assert.match(decoded(calls[1]), /where=search\(ville, "Pacé or 1"\)/u);
-  assert.deepEqual(
-    await addon.search!.find({ kind: 'station', query: 'P', values: {} }, context),
-    [],
-  );
-  assert.equal(calls.length, 2);
+  await f.runtime.search(addon.id, { kind: 'station', query: 'Pacé" or "1' }, signal);
+  assert.match(decoded(f.calls[1]?.url), /where=search\(ville, "Pacé or 1"\)/u);
+  assert.deepEqual(await f.runtime.search(addon.id, { kind: 'station', query: 'P' }, signal), []);
+  assert.equal(f.calls.length, 2);
 });

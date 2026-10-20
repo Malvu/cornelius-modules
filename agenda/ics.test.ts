@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { CalendarError, readCalendar, zonedTime } from './ics.js';
+import { zonedTime } from '../_lib/temps.js';
+import { CalendarError, readCalendar } from './ics.js';
 
 /** Agenda fictif, au format d'un export Google Agenda, avec les cas difficiles. */
 const ics = readFileSync(new URL('./fixtures/famille.ics', import.meta.url), 'utf8');

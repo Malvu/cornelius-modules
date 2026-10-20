@@ -9,13 +9,15 @@
       "description": "Bacs ramassés et leur règle, déjà comprise : les dates se calculent à la présentation.",
       "type": "array",
       "minItems": 1,
-      "maxItems": 5,
+      "maxItems": 8,
       "items": {
         "type": "object",
         "additionalProperties": false,
         "required": ["kind", "weekdays", "parity", "ordinals"],
         "properties": {
-          "kind": { "enum": ["menager", "emballages", "verre", "biodechets", "vegetaux"] },
+          "kind": {
+            "enum": ["menager", "emballages", "verre", "biodechets", "vegetaux", "encombrants"]
+          },
           "weekdays": {
             "description": "1 = lundi … 7 = dimanche.",
             "type": "array",

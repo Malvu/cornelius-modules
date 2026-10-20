@@ -16,7 +16,20 @@ const addon: AddonDefinition<ParkingConfig, ParkingData> = {
   id: 'parking',
   apiVersion: 1,
   version: '1.0.0',
+  // Les extensions de Cornelius 0.2.0 (display, arguments, refreshAt, timeZone…) : le
+  // déclarer fait refuser proprement le module par un Cornelius plus ancien.
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Parkings (démonstration)',
+  // Présentation dans l'administration : nom, phrase, icône (liste dans la référence),
+  // exemple de source et tournure de la phrase à prononcer (« les places de la gare »).
+  display: {
+    name: 'Parking',
+    description: 'Places libres du parking de votre choix.',
+    icon: 'car',
+    keywords: ['parking', 'places', 'stationnement'],
+    example: { label: 'Parking de la gare', ref: 'gare' },
+    spoken: { head: 'les places', repeats: ['parking', 'places'] },
+  },
   // Facultatif : jetons à renseigner dans le fichier .env. Le module les lit par
   // context.secret(name) ; l'administration affiche « Ce module a besoin d’<label> (<note>).
   // Ajoutez <env> dans le fichier .env puis redémarrez Cornelius. », avec le lien url, et

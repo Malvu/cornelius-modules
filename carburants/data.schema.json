@@ -5,8 +5,16 @@
   "additionalProperties": false,
   "required": ["address", "city", "prices"],
   "properties": {
-    "address": { "type": "string", "minLength": 1, "maxLength": 160 },
-    "city": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "address": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "city": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
     "prices": {
       "description": "Prix affichés, carburant principal d’abord. updated : jour du relevé, à Paris.",
       "type": "array",
@@ -16,11 +24,24 @@
         "additionalProperties": false,
         "required": ["fuel", "price", "updated"],
         "properties": {
-          "fuel": { "enum": ["gazole", "sp95", "sp98", "e10", "e85", "gplc"] },
-          "price": { "type": "number", "exclusiveMinimum": 0, "maximum": 20 },
-          "updated": { "type": ["string", "null"], "format": "date" }
+          "fuel": {
+            "enum": ["gazole", "sp95", "sp98", "e10", "e85", "gplc"]
+          },
+          "price": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 20
+          },
+          "updated": {
+            "type": ["string", "null"],
+            "format": "date"
+          }
         }
       }
+    },
+    "asked": {
+      "description": "Carburant demandé à la voix, s'il y en a un.",
+      "enum": ["gazole", "sp95", "sp98", "e10", "e85", "gplc"]
     }
   }
 }

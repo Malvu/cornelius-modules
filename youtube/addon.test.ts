@@ -1,14 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-  AddonRepository,
-  AddonRuntime,
-  openDatabase,
-  validateAddonDefinition,
-} from '#cornelius/testing';
-import type { AddonHttpRequest } from '#cornelius/addons';
-import { validators } from '#cornelius/validation';
+import { createTestModule } from '#cornelius/testing';
 import addon from './index.js';
 
 /** Flux réel de la chaîne des Frères Poulain, réduit à six entrées (trois Shorts), le 20/10/2026. */
@@ -19,45 +12,16 @@ function setup(
   config: Record<string, unknown> = {},
   reply: { status: number; body: string } = { status: 200, body: feed },
 ) {
-  const db = openDatabase(':memory:');
-  t.after(() => db.close());
-  const instances = new AddonRepository(db);
-  const instance = instances.createInstance({
-    addonId: addon.id,
-    profileId: null,
+  return createTestModule(t, addon, {
+    config,
+    at: '2026-10-20T10:00:00Z',
     ref: 'poulain',
-    label: 'Les Frères Poulain',
-    config: { ...addon.configDefaults, ...config },
-    configVersion: addon.configVersion,
+    routes: () => reply,
   });
-  const calls: AddonHttpRequest[] = [];
-  const runtime = new AddonRuntime({
-    addons: [addon],
-    instances,
-    now: () => Date.parse('2026-10-20T10:00:00Z'),
-    http: {
-      async fetch(request) {
-        calls.push(request);
-        return {
-          status: reply.status,
-          headers: {},
-          text: () => reply.body,
-          json: () => JSON.parse(reply.body) as unknown,
-        };
-      },
-    },
-  });
-  return {
-    runtime,
-    instance,
-    calls,
-    read: () => runtime.read(addon.id, null, 'poulain', new AbortController().signal),
-  };
 }
 
-test('définition v1, configuration, snapshot, carte et résultat outil conformes', async (t) => {
+test('définition, réglages et contrat', async (t) => {
   const f = setup(t);
-  assert.equal(validateAddonDefinition(addon), null);
   assert.equal(f.runtime.validateConfig(addon.id, addon.configDefaults).ok, true);
   for (const channelId of ['@LesFreresPoulain', 'UCcourt', 'https://youtube.com/channel/UC0'])
     assert.equal(
@@ -66,12 +30,7 @@ test('définition v1, configuration, snapshot, carte et résultat outil conforme
       channelId,
     );
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(validators.moduleSnapshot(result.snapshot), true);
-  assert.equal(validators.moduleCard(result.card), true);
-  assert.equal(validators.ambientPresentation(f.runtime.ambientDisplay(f.instance).content), true);
-  assert.equal(validators.toolResult(f.runtime.toolResult(result)), true);
+  assert.deepEqual(f.contract(result), []);
   assert.equal(
     f.calls[0]?.url,
     'https://www.youtube.com/feeds/videos.xml?channel_id=UCjED9uS41ioeFuPfbR-OBlw',

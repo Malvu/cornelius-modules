@@ -7,19 +7,41 @@
   "properties": {
     "zone": {
       "title": "Zone scolaire",
-      "description": "A, B, C ou Corse. Paris, Créteil, Versailles, Montpellier et Toulouse sont en zone C.",
+      "description": "Paris, Créteil, Versailles, Montpellier et Toulouse sont en zone C.",
       "type": "string",
-      "pattern": "^(A|B|C|Corse)$",
-      "maxLength": 5,
-      "examples": ["C"]
+      "oneOf": [
+        {
+          "const": "A",
+          "title": "Zone A"
+        },
+        {
+          "const": "B",
+          "title": "Zone B"
+        },
+        {
+          "const": "C",
+          "title": "Zone C"
+        },
+        {
+          "const": "Corse",
+          "title": "Corse"
+        }
+      ]
     },
     "region": {
       "title": "Jours fériés",
-      "description": "metropole, ou alsace-moselle pour ajouter le Vendredi saint et le 26 décembre.",
+      "description": "L’Alsace-Moselle ajoute le Vendredi saint et le 26 décembre.",
       "type": "string",
-      "pattern": "^(metropole|alsace-moselle)$",
-      "maxLength": 14,
-      "examples": ["metropole"]
+      "oneOf": [
+        {
+          "const": "metropole",
+          "title": "France métropolitaine"
+        },
+        {
+          "const": "alsace-moselle",
+          "title": "Alsace-Moselle"
+        }
+      ]
     }
   }
 }

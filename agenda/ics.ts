@@ -7,11 +7,13 @@
  * BYDAY (rangs compris) et BYMONTHDAY ; EXDATE ; RECURRENCE-ID ; STATUS:CANCELLED.
  */
 
+import { dayIn, dayMs, zonedTime, type Wall } from '../_lib/temps.js';
+
 export interface Occurrence {
   uid: string;
   title: string;
   location: string | null;
-  /** Début et fin en millisecondes UTC ; pour une journée entière, minuit à Paris. */
+  /** Début et fin en millisecondes UTC ; pour une journée entière, minuit dans le fuseau du foyer. */
   start: number;
   end: number;
   allDay: boolean;
@@ -25,18 +27,13 @@ export interface Calendar {
 export class CalendarError extends Error {}
 
 type Property = { name: string; params: Record<string, string>; value: string };
-type Wall = {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  second: number;
-};
 type Moment = { wall: Wall; zone: string | null; allDay: boolean };
 
-const defaultZone = 'Europe/Paris';
-const dayMs = 86_400_000;
+/**
+ * Fuseau du foyer, pour les journées entières et les heures sans fuseau. Fixé à l'entrée de
+ * readCalendar, qui est synchrone : aucune autre lecture ne peut s'intercaler.
+ */
+let homeZone = 'Europe/Paris';
 
 /** Fuseaux Windows qu'écrit Outlook, ramenés à leur nom IANA. */
 const windowsZones: Record<string, string> = {
@@ -55,72 +52,21 @@ const windowsZones: Record<string, string> = {
 };
 
 const zoneCache = new Map<string, string>();
-/** Nom IANA utilisable, ou le fuseau de Paris si le nom est inconnu. */
+/** Nom IANA utilisable, ou le fuseau du foyer si le nom est inconnu. */
 function zoneOf(tzid: string | null | undefined): string {
-  if (!tzid) return defaultZone;
+  if (!tzid) return homeZone;
   const cleaned = tzid.replace(/^\/+/u, '').replace(/^"|"$/gu, '').trim();
   const cached = zoneCache.get(cleaned);
-  if (cached) return cached;
+  if (cached) return cached === '?' ? homeZone : cached;
   let zone = windowsZones[cleaned.toLowerCase()] ?? cleaned;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: zone });
   } catch {
-    zone = defaultZone;
+    zoneCache.set(cleaned, '?');
+    return homeZone;
   }
   zoneCache.set(cleaned, zone);
   return zone;
-}
-
-const formatters = new Map<string, Intl.DateTimeFormat>();
-function partsIn(ms: number, zone: string): Wall {
-  let formatter = formatters.get(zone);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: zone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hourCycle: 'h23',
-    });
-    formatters.set(zone, formatter);
-  }
-  const p = Object.fromEntries(formatter.formatToParts(ms).map((part) => [part.type, part.value]));
-  return {
-    year: Number(p.year),
-    month: Number(p.month),
-    day: Number(p.day),
-    hour: Number(p.hour),
-    minute: Number(p.minute),
-    second: Number(p.second),
-  };
-}
-
-const wallUtc = (w: Wall) => Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, w.second);
-
-/**
- * Instant UTC d'une heure murale dans un fuseau, changements d'heure compris. Une heure qui
- * existe deux fois (passage à l'heure d'hiver) désigne la première (RFC 5545 § 3.3.5).
- */
-export function zonedTime(wall: Wall, zone: string): number {
-  const target = wallUtc(wall);
-  let guess = target;
-  for (let pass = 0; pass < 3; pass += 1) {
-    const offset = wallUtc(partsIn(guess, zone)) - guess;
-    const next = target - offset;
-    if (next === guess) break;
-    guess = next;
-  }
-  const earlier = guess - 3_600_000;
-  return wallUtc(partsIn(earlier, zone)) === target ? earlier : guess;
-}
-
-/** Jour civil à Paris d'un instant, compté en jours depuis 1970. */
-export function parisDay(ms: number): number {
-  const w = partsIn(ms, defaultZone);
-  return Date.UTC(w.year, w.month - 1, w.day) / dayMs;
 }
 
 // --- Lecture du texte ------------------------------------------------------------------------
@@ -189,7 +135,7 @@ function moment(property: Property | undefined): Moment | null {
 
 /** Instant d'un moment ; une journée entière commence à minuit à Paris. */
 function instant(m: Moment): number {
-  return zonedTime(m.wall, m.allDay ? defaultZone : (m.zone ?? defaultZone));
+  return zonedTime(m.wall, m.allDay ? homeZone : (m.zone ?? homeZone));
 }
 
 function duration(value: string | undefined): number | null {
@@ -419,7 +365,13 @@ function lengthOf(event: RawEvent): number {
  * Occurrences qui touchent la fenêtre [from, to[, par ordre de début. Un agenda coupé par
  * la limite de taille garde ses événements complets.
  */
-export function readCalendar(text: string, from: number, to: number): Calendar {
+export function readCalendar(
+  text: string,
+  from: number,
+  to: number,
+  zone = 'Europe/Paris',
+): Calendar {
+  homeZone = zone;
   const { name, events: all } = events(text);
   const overrides = new Map<string, RawEvent>();
   for (const event of all)
@@ -443,7 +395,7 @@ export function readCalendar(text: string, from: number, to: number): Calendar {
       push(event, instant(event.start));
       continue;
     }
-    const zone = event.start.allDay ? defaultZone : (event.start.zone ?? defaultZone);
+    const zone = event.start.allDay ? homeZone : (event.start.zone ?? homeZone);
     const { hour, minute, second } = event.start.wall;
     const startDay = civil(event.start.wall.year, event.start.wall.month, event.start.wall.day);
     // Chaque occurrence garde son heure murale : 10 h reste 10 h après le changement d'heure.
@@ -461,9 +413,9 @@ export function readCalendar(text: string, from: number, to: number): Calendar {
         zone,
       );
     };
-    const lastDay = parisDay(to) + 1;
+    const lastDay = dayIn(to, homeZone) + 1;
     // Les occurrences finies bien avant la fenêtre ne sont pas datées à l'heure près.
-    const firstDay = parisDay(from) - Math.ceil(lengthOf(event) / dayMs) - 1;
+    const firstDay = dayIn(from, homeZone) - Math.ceil(lengthOf(event) / dayMs) - 1;
     for (const day of recurringDays(event.rule, startDay, lastDay, stamp)) {
       if (day < firstDay) continue;
       const start = stamp(day);

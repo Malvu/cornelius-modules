@@ -6,6 +6,7 @@ import {
   type ModuleSnapshot,
 } from '#cornelius/addons';
 import { compile } from '#cornelius/validation';
+import { dateIn, iso, nextMidnight } from '../_lib/temps.js';
 import configSchema from './config.schema.json' with { type: 'json' };
 import dataSchema from './data.schema.json' with { type: 'json' };
 
@@ -210,8 +211,9 @@ function holidaysFrom(payload: Record<string, string>, today: string): PublicHol
 // --- Présentation -----------------------------------------------------------------------------
 
 /** Lecture du jour : les dates sont recalculées à chaque présentation, pas à la collecte. */
-function situation(data: VacancesData, now: number) {
-  const today = dayOf(now);
+/** Situation du jour : « aujourd'hui » est le jour civil du foyer. */
+function situation(data: VacancesData, now: number, zone: string) {
+  const today = dateIn(now, zone);
   const upcoming = data.vacations.filter((vacation) => vacation.end > today);
   const current = upcoming.find((vacation) => vacation.start <= today) ?? null;
   const next = upcoming.find((vacation) => vacation.start > today) ?? null;
@@ -227,8 +229,18 @@ function holidayText(holiday: PublicHoliday, today: string): string {
 const addon: AddonDefinition<VacancesConfig, VacancesData> = {
   id: 'vacances',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Vacances scolaires et jours fériés',
+  display: {
+    name: 'Vacances et jours fériés',
+    description:
+      'En vacances ou pas, les prochaines vacances scolaires de la zone et le prochain jour férié.',
+    icon: 'tree-palm',
+    keywords: ['vacances', 'scolaires', 'zone', 'rentrée', 'jour férié', 'école'],
+    example: { label: 'Vacances de la maison', ref: 'maison' },
+    spoken: { head: 'les vacances', repeats: ['vacances', 'conges'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: { zone: 'C', region: 'metropole' },
@@ -236,7 +248,9 @@ const addon: AddonDefinition<VacancesConfig, VacancesData> = {
   dataSchema,
   // Le maximum que le cœur accepte : le calendrier change rarement, et la situation du
   // jour (en vacances, dans combien de jours) est recalculée à chaque présentation.
-  freshMs: 60 * 60 * 1000,
+  // Le calendrier change rarement : relu deux fois par jour. La situation du jour
+  // (en vacances, dans combien de jours) est recalculée à chaque présentation.
+  freshMs: 12 * 60 * 60 * 1000,
   tools: [
     {
       name: 'read',
@@ -254,7 +268,7 @@ const addon: AddonDefinition<VacancesConfig, VacancesData> = {
   ],
   async collect(context) {
     const { zone, region } = context.config;
-    const today = dayOf(context.now());
+    const today = dateIn(context.now(), context.timeZone);
     const zoneName = zone === 'Corse' ? 'Corse' : `Zone ${zone}`;
     const query = new URLSearchParams({
       select: 'description,population,start_date,end_date',
@@ -288,11 +302,13 @@ const addon: AddonDefinition<VacancesConfig, VacancesData> = {
     present(snapshot, context) {
       const data = snapshot.data;
       if (!data) throw new Error('Aucun calendrier à afficher.');
-      const { today, current, next, holiday } = situation(data, context.now());
+      const { today, current, next, holiday } = situation(data, context.now(), context.timeZone);
       return {
         layout: 'metric',
         // Un calendrier ne vieillit pas d'un relevé à l'autre : la date de collecte n'aide pas.
         showCollectedAt: false,
+        // À minuit, le compte à rebours perd un jour, ou les vacances commencent.
+        refreshAt: iso(nextMidnight(context.now(), context.timeZone)),
         title: 'Vacances',
         value: current ? 'En vacances' : next ? capitalize(inDays(today, next.start)) : null,
         subtitle: current
@@ -310,7 +326,11 @@ const addon: AddonDefinition<VacancesConfig, VacancesData> = {
     const data = snapshot.data;
     if (!data) throw new Error('Aucun calendrier à présenter.');
     const stale = snapshot.status === 'stale';
-    const { today, current, next, later, holiday } = situation(data, context.now());
+    const { today, current, next, later, holiday } = situation(
+      data,
+      context.now(),
+      context.timeZone,
+    );
     const zone = zoneLabel(data.zone);
     const items: { label: string; value: string }[] = [];
     for (const vacation of (current && next ? [next, ...later] : later).slice(0, 3))

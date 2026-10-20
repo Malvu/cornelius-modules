@@ -20,11 +20,38 @@
     },
     "fuel": {
       "title": "Carburant principal",
-      "description": "gazole, sp95, sp98, e10, e85 ou gplc : annoncé en premier. Vide : tous, dans l’ordre habituel.",
+      "description": "Annoncé en premier ; « Tous » : dans l’ordre habituel.",
       "type": ["string", "null"],
-      "pattern": "^(gazole|sp95|sp98|e10|e85|gplc)$",
-      "maxLength": 6,
-      "examples": ["gazole"]
+      "oneOf": [
+        {
+          "const": null,
+          "title": "Tous"
+        },
+        {
+          "const": "gazole",
+          "title": "Gazole"
+        },
+        {
+          "const": "e10",
+          "title": "SP95-E10"
+        },
+        {
+          "const": "sp95",
+          "title": "SP95"
+        },
+        {
+          "const": "sp98",
+          "title": "SP98"
+        },
+        {
+          "const": "e85",
+          "title": "E85"
+        },
+        {
+          "const": "gplc",
+          "title": "GPL"
+        }
+      ]
     }
   }
 }

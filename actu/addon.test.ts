@@ -1,14 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-  AddonRepository,
-  AddonRuntime,
-  openDatabase,
-  validateAddonDefinition,
-} from '#cornelius/testing';
-import type { AddonHttpRequest } from '#cornelius/addons';
-import { validators } from '#cornelius/validation';
+import { createTestModule } from '#cornelius/testing';
 import addon from './index.js';
 
 // Flux fictifs, aux formats exacts de franceinfo (entités hexadécimales) et du Monde (CDATA).
@@ -20,65 +13,22 @@ function setup(
   config: Record<string, unknown> = {},
   reply: { status: number; body: string } = { status: 200, body: fixture('franceinfo.xml') },
 ) {
-  const db = openDatabase(':memory:');
-  t.after(() => db.close());
-  const instances = new AddonRepository(db);
-  const instance = instances.createInstance({
-    addonId: addon.id,
-    profileId: null,
+  return createTestModule(t, addon, {
+    config,
+    at: '2026-10-20T13:30:00Z',
     ref: 'titres',
-    label: 'Les titres',
-    config: { ...addon.configDefaults, ...config },
-    configVersion: addon.configVersion,
+    routes: () => reply,
   });
-  let now = Date.parse('2026-10-20T13:30:00Z');
-  let current = reply;
-  const calls: AddonHttpRequest[] = [];
-  const runtime = new AddonRuntime({
-    addons: [addon],
-    instances,
-    now: () => now,
-    http: {
-      async fetch(request) {
-        calls.push(request);
-        return {
-          status: current.status,
-          headers: {},
-          text: () => current.body,
-          json: () => JSON.parse(current.body) as unknown,
-        };
-      },
-    },
-  });
-  return {
-    runtime,
-    instance,
-    calls,
-    read: () => runtime.read(addon.id, null, 'titres', new AbortController().signal),
-    advance: (ms: number) => {
-      now += ms;
-    },
-    reply: (next: { status: number; body: string }) => {
-      current = next;
-    },
-  };
 }
 
-test('définition v1, configuration, snapshot, carte et résultat outil conformes', async (t) => {
+test('définition, réglages et contrat', async (t) => {
   const f = setup(t);
-  assert.equal(validateAddonDefinition(addon), null);
   assert.equal(f.runtime.validateConfig(addon.id, addon.configDefaults).ok, true);
   for (const url of ['ftp://exemple.fr/flux', 'franceinfo.fr/titres.rss', 'javascript:alert(1)'])
     assert.equal(f.runtime.validateConfig(addon.id, { url, count: 3 }).ok, false, url);
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(validators.moduleSnapshot(result.snapshot), true);
-  assert.equal(validators.moduleCard(result.card), true);
-  assert.equal(validators.ambientPresentation(f.runtime.ambientDisplay(f.instance).content), true);
-  assert.equal(validators.toolResult(f.runtime.toolResult(result)), true);
+  assert.deepEqual(f.contract(result), []);
   assert.equal(f.calls[0]?.url, 'https://www.franceinfo.fr/titres.rss');
-  assert.match(f.calls[0]?.headers?.['User-Agent'] ?? '', /^Cornelius-modules\//u);
 });
 
 test('franceinfo : entités décodées, ancienneté, nombre de titres réglé', async (t) => {
@@ -130,7 +80,7 @@ test('panne après expiration : derniers titres connus, annoncés comme tels', a
   const f = setup(t);
   assert.equal((await f.read()).ok, true);
   f.advance(15 * 60 * 1000 + 1);
-  f.reply({ status: 503, body: '' });
+  f.route(() => ({ status: 503 }));
   const result = await f.read();
   assert.equal(result.ok, true);
   if (!result.ok) return;

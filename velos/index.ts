@@ -40,11 +40,23 @@ const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
 const count = (value: unknown): number | null =>
   typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
 
+/**
+ * Durée de partage des réponses dans le cache du cœur : plusieurs sources d'un même réseau,
+ * et chaque recherche, relisent le même fichier (450 Ko pour l'état des stations Vélib').
+ */
+const shared = {
+  discovery: 10 * 60_000,
+  catalog: 10 * 60_000,
+  stations: 10 * 60_000,
+  status: 30_000,
+};
+
 async function getText(
   http: AddonHttpClient,
   url: string,
   signal: AbortSignal | undefined,
   what: string,
+  cacheMs: number,
 ): Promise<string> {
   const response = await http.fetch({
     url,
@@ -52,6 +64,7 @@ async function getText(
     signal,
     timeoutMs: 10_000,
     maxBytes: 4 * 1024 * 1024,
+    cacheMs,
   });
   if (response.status === 404) throw new AddonCollectError('not_found', `${what} introuvable.`);
   if (response.status === 401 || response.status === 403)
@@ -73,8 +86,9 @@ async function getJson(
   url: string,
   signal: AbortSignal | undefined,
   what: string,
+  cacheMs: number,
 ): Promise<Json> {
-  const text = await getText(http, url, signal, what);
+  const text = await getText(http, url, signal, what, cacheMs);
   try {
     return record(JSON.parse(text));
   } catch {
@@ -84,7 +98,7 @@ async function getJson(
 
 /** Flux annoncés par gbfs.json : liste directe en 3.0, par langue (fr de préférence) en 2.x. */
 async function discover(http: AddonHttpClient, url: string, signal: AbortSignal | undefined) {
-  const data = record((await getJson(http, url, signal, 'Réseau')).data);
+  const data = record((await getJson(http, url, signal, 'Réseau', shared.discovery)).data);
   const byLanguage = record(
     data.fr ?? data[Object.keys(data).find((key) => key !== 'feeds') ?? ''],
   );
@@ -178,8 +192,17 @@ const plural = (n: number, word: string) => `${n === 0 ? 'aucun' : n} ${word}${n
 const addon: AddonDefinition<VelosConfig, VelosData> = {
   id: 'velos',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Vélos en libre-service',
+  display: {
+    name: 'Vélos en libre-service',
+    description: 'Vélos et places libres d’une station : Vélib’, V’Lille, Vélo’v, STAR, TBM…',
+    icon: 'bike',
+    keywords: ['vélo', 'vélib', 'libre-service', 'station', 'gbfs', 'v’lille', 'vélo’v', 'star'],
+    example: { label: 'Vélos de la maison', ref: 'maison' },
+    spoken: { head: 'les vélos', repeats: ['velos', 'velo', 'velib', 'station'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: {
@@ -230,7 +253,13 @@ const addon: AddonDefinition<VelosConfig, VelosData> = {
       if (query.length < 2) return [];
       if (input.kind === 'system') {
         const lines = (
-          await getText(context.http, catalogUrl, context.signal, 'Catalogue des réseaux')
+          await getText(
+            context.http,
+            catalogUrl,
+            context.signal,
+            'Catalogue des réseaux',
+            shared.catalog,
+          )
         )
           .split(/\r?\n/u)
           .filter(Boolean);
@@ -263,7 +292,10 @@ const addon: AddonDefinition<VelosConfig, VelosData> = {
             'Ce réseau n’a pas de stations : vélos ou engins en libre accès.',
           );
         const stations = list(
-          record((await getJson(context.http, infoUrl, context.signal, 'Stations')).data).stations,
+          record(
+            (await getJson(context.http, infoUrl, context.signal, 'Stations', shared.stations))
+              .data,
+          ).stations,
         ).map(record);
         return stations
           .map((station) => ({ station, name: stationName(station.name) }))
@@ -292,9 +324,11 @@ const addon: AddonDefinition<VelosConfig, VelosData> = {
       throw new AddonCollectError('not_found', 'Ce réseau ne publie pas l’état de ses stations.');
     const typesUrl = feed('vehicle_types');
     const [status, types] = await Promise.all([
-      getJson(context.http, statusUrl, context.signal, 'État des stations'),
+      getJson(context.http, statusUrl, context.signal, 'État des stations', shared.status),
       typesUrl
-        ? getJson(context.http, typesUrl, context.signal, 'Types de vélos').catch(() => ({}))
+        ? getJson(context.http, typesUrl, context.signal, 'Types de vélos', shared.discovery).catch(
+            () => ({}),
+          )
         : {},
     ]);
     const stations = list(record(status.data).stations).map(record);

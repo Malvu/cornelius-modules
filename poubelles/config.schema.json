@@ -1,44 +1,42 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "PoubellesConfig v1",
+  "title": "PoubellesConfig v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["menager", "emballages", "verre", "biodechets", "vegetaux", "veille"],
+  "required": ["bacs", "veille"],
   "properties": {
-    "menager": {
-      "title": "Ordures ménagères",
-      "description": "Jours de ramassage, par exemple « lundi et jeudi ». Vide : pas de ramassage.",
-      "type": ["string", "null"],
-      "maxLength": 80,
-      "examples": ["lundi et jeudi"]
-    },
-    "emballages": {
-      "title": "Emballages et papiers",
-      "description": "Par exemple « mercredi semaines paires ». Vide : pas de ramassage.",
-      "type": ["string", "null"],
-      "maxLength": 80,
-      "examples": ["mercredi semaines paires"]
-    },
-    "verre": {
-      "title": "Verre",
-      "description": "Par exemple « 1er vendredi du mois ». Vide : pas de ramassage.",
-      "type": ["string", "null"],
-      "maxLength": 80,
-      "examples": ["1er vendredi du mois"]
-    },
-    "biodechets": {
-      "title": "Biodéchets",
-      "description": "Restes alimentaires. Vide : pas de ramassage.",
-      "type": ["string", "null"],
-      "maxLength": 80,
-      "examples": ["mardi"]
-    },
-    "vegetaux": {
-      "title": "Déchets verts",
-      "description": "Par exemple « dernier lundi du mois ». Vide : pas de ramassage.",
-      "type": ["string", "null"],
-      "maxLength": 80,
-      "examples": ["dernier lundi du mois"]
+    "bacs": {
+      "title": "Bacs ramassés",
+      "description": "Un bac par ligne, avec ses jours comme les écrit la commune : « lundi et jeudi », « mercredi semaines paires », « 1er vendredi du mois ».",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bac", "jours"],
+        "properties": {
+          "bac": {
+            "title": "Bac",
+            "type": "string",
+            "oneOf": [
+              { "const": "menager", "title": "Ordures ménagères" },
+              { "const": "emballages", "title": "Emballages et papiers" },
+              { "const": "verre", "title": "Verre" },
+              { "const": "biodechets", "title": "Biodéchets" },
+              { "const": "vegetaux", "title": "Déchets verts" },
+              { "const": "encombrants", "title": "Encombrants" }
+            ]
+          },
+          "jours": {
+            "title": "Jours de ramassage",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "examples": ["lundi et jeudi"]
+          }
+        }
+      }
     },
     "veille": {
       "title": "Sortir la veille au soir",

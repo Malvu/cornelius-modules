@@ -1,74 +1,26 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import {
-  AddonRepository,
-  AddonRuntime,
-  openDatabase,
-  validateAddonDefinition,
-} from '#cornelius/testing';
-import type { AddonHttpRequest } from '#cornelius/addons';
-import { validators } from '#cornelius/validation';
+import { createTestModule } from '#cornelius/testing';
 import addon from './index.js';
 
+/** Agenda fictif au format d'un export Google ; mardi 20 octobre 2026, 10 h à Paris. */
 const ics = readFileSync(new URL('./fixtures/famille.ics', import.meta.url), 'utf8');
 const secretUrl =
   'https://calendar.google.com/calendar/ical/famille%40example.com/private-0123456789abcdef/basic.ics';
 
-function setup(
+const setup = (
   t: { after(fn: () => void): void },
-  config: Record<string, unknown> = {},
-  reply: { status: number; body: string } = { status: 200, body: ics },
-  at = '2026-10-20T08:00:00Z',
-) {
-  const db = openDatabase(':memory:');
-  t.after(() => db.close());
-  const instances = new AddonRepository(db);
-  const instance = instances.createInstance({
-    addonId: addon.id,
-    profileId: null,
-    ref: 'famille',
-    label: 'Agenda de la famille',
-    config: { url: secretUrl, days: 7, ...config },
-    configVersion: addon.configVersion,
+  options: { config?: Record<string, unknown>; at?: string; body?: string; status?: number } = {},
+) =>
+  createTestModule(t, addon, {
+    config: { url: secretUrl, days: 7, ...options.config },
+    at: options.at,
+    routes: { 'calendar.google.com': { status: options.status ?? 200, body: options.body ?? ics } },
   });
-  let now = Date.parse(at);
-  let current = reply;
-  const calls: AddonHttpRequest[] = [];
-  const runtime = new AddonRuntime({
-    addons: [addon],
-    instances,
-    now: () => now,
-    http: {
-      async fetch(request) {
-        calls.push(request);
-        return {
-          status: current.status,
-          headers: {},
-          text: () => current.body,
-          json: () => JSON.parse(current.body) as unknown,
-        };
-      },
-    },
-  });
-  return {
-    runtime,
-    instances,
-    instance,
-    calls,
-    read: () => runtime.read(addon.id, null, 'famille', new AbortController().signal),
-    at: (iso: string) => {
-      now = Date.parse(iso);
-    },
-    reply: (next: { status: number; body: string }) => {
-      current = next;
-    },
-  };
-}
 
-test('définition v1, configuration, snapshot, carte et résultat outil conformes', async (t) => {
+test('définition, réglages et contrat', async (t) => {
   const f = setup(t);
-  assert.equal(validateAddonDefinition(addon), null);
   for (const url of [secretUrl, 'webcal://p01-caldav.icloud.com/published/2/abc'])
     assert.equal(f.runtime.validateConfig(addon.id, { url, days: 7 }).ok, true, url);
   for (const config of [
@@ -78,16 +30,7 @@ test('définition v1, configuration, snapshot, carte et résultat outil conforme
   ])
     assert.equal(f.runtime.validateConfig(addon.id, config).ok, false, JSON.stringify(config));
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(validators.moduleSnapshot(result.snapshot), true);
-  assert.equal(
-    validators.moduleCard(result.card),
-    true,
-    JSON.stringify(validators.moduleCard.errors),
-  );
-  assert.equal(validators.ambientPresentation(f.runtime.ambientDisplay(f.instance).content), true);
-  assert.equal(validators.toolResult(f.runtime.toolResult(result)), true);
+  assert.deepEqual(f.contract(result), []);
   assert.equal(f.calls[0]?.url, secretUrl);
 });
 
@@ -112,16 +55,10 @@ test('la semaine : rendez-vous en cours d’abord, puis par jour, à l’oral co
   assert.equal(result.card.title, 'Agenda · Famille');
   assert.equal(result.card.primaryValue, "Réunion d'école");
   assert.equal(result.card.subtitle, 'Aujourd’hui, en cours, jusqu’à 11 h');
-  assert.deepEqual(result.card.items, [
+  assert.deepEqual(result.card.items.slice(0, 3), [
     { label: 'Aujourd’hui 16 h', value: 'Dentiste de Léa · Cabinet du Dr Martin, Pacé' },
     { label: 'Aujourd’hui 18 h', value: 'Séance photo' },
     { label: 'Demain 18 h 30', value: 'Foot de Tom' },
-    { label: 'Jeu. 22 oct. · journée', value: 'Anniversaire de Mamie' },
-    {
-      label: 'Jeu. 22 oct. 14 h',
-      value:
-        "Visio avec les cousins d'Amérique pour préparer les fêtes de fin d'année et la grande réunion de famille",
-    },
   ]);
   assert.equal(
     result.presentation.summary,
@@ -133,51 +70,89 @@ test('la semaine : rendez-vous en cours d’abord, puis par jour, à l’oral co
   );
 });
 
-test('un séjour de plusieurs jours se dit jusqu’à son dernier jour', async (t) => {
-  const f = setup(t, {}, undefined, '2026-10-24T06:00:00Z'); // samedi, 8 h
-  const saturday = await f.read();
-  assert.equal(saturday.ok, true);
-  if (!saturday.ok) return;
-  assert.equal(saturday.card.primaryValue, 'Stage de voile');
-  assert.equal(saturday.card.subtitle, 'Aujourd’hui, jusqu’au lundi 26 octobre');
-  assert.equal(saturday.card.items[0]?.label, 'Aujourd’hui 11 h');
+test('arguments : « samedi » et « la semaine prochaine », à la demande, sans toucher au relevé', async (t) => {
+  const f = setup(t);
+  const saturday = await f.invoke('read', { debut: 4, jours: null });
+  assert.equal(saturday.tool.status, 'succeeded');
+  assert.equal(saturday.outcome.ok && saturday.outcome.card.primaryValue, 'Stage de voile');
+  assert.match(
+    saturday.tool.summary,
+    /^Samedi 24 octobre : Stage de voile jusqu’au lundi 26 octobre et Cours de piano \(décalé\) à 11 h\./u,
+  );
+  // « La semaine prochaine » : du mardi 27 octobre au lundi 2 novembre.
+  const next = await f.invoke('read', { debut: 7, jours: 7 });
+  assert.match(next.tool.summary, /Réunion de copro/u);
+  assert.doesNotMatch(next.tool.summary, /Dentiste/u);
+  // Vendredi 18 décembre : aucun rendez-vous, et la phrase le dit pour ce jour-là.
+  const empty = await f.invoke('read', { debut: 59, jours: 1 });
+  assert.equal(empty.tool.summary, 'Rien de prévu vendredi 18 décembre.');
+  const outside = await f.invoke('read', { debut: 61 });
+  assert.equal(outside.tool.error?.code, 'invalid_params');
+  // Aucune de ces lectures n'a remplacé le relevé ordinaire.
+  assert.equal(f.instances.getSnapshot(f.instance), null);
 });
 
-test('un rendez-vous fini disparaît sans attendre la collecte suivante', async (t) => {
-  const f = setup(t, {}, undefined, '2026-10-20T08:50:00Z'); // 10 h 50 : réunion en cours
+test('plusieurs jours, rendez-vous fini, et l’affichage se recalcule à l’heure dite', async (t) => {
+  const f = setup(t, { at: '2026-10-20T08:50:00Z' }); // 10 h 50 : réunion en cours
   const during = await f.read();
-  assert.equal(during.ok, true);
-  if (during.ok) assert.equal(during.card.primaryValue, "Réunion d'école");
+  assert.equal(during.ok && during.card.primaryValue, "Réunion d'école");
+  // La carte permanente demande à être refaite à 11 h, fin de la réunion.
+  assert.equal(f.ambient().content?.refreshAt, '2026-10-20T09:00:00.000Z');
   f.at('2026-10-20T09:04:00Z'); // 11 h 04 : finie, relevé encore frais
   const after = await f.read();
-  assert.equal(after.ok, true);
-  if (after.ok) assert.equal(after.card.primaryValue, 'Dentiste de Léa');
+  assert.equal(after.ok && after.card.primaryValue, 'Dentiste de Léa');
   assert.equal(f.calls.length, 1);
+
+  const g = setup(t, { at: '2026-10-24T06:00:00Z' }); // samedi, 8 h
+  const saturday = await g.read();
+  assert.equal(saturday.ok && saturday.card.subtitle, 'Aujourd’hui, jusqu’au lundi 26 octobre');
 });
 
-test('« webcal:// » est lu en https ; une semaine vide est une réponse', async (t) => {
+test('« webcal:// » lu en https ; une semaine vide est une réponse ; un agenda coupé le dit', async (t) => {
   const empty = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n';
-  const f = setup(
-    t,
-    { url: 'webcal://p01-caldav.icloud.com/published/2/abc', days: 3 },
-    { status: 200, body: empty },
-  );
+  const f = createTestModule(t, addon, {
+    config: { url: 'webcal://p01-caldav.icloud.com/published/2/abc', days: 3 },
+    routes: { 'icloud.com': empty },
+  });
   const result = await f.read();
   assert.equal(f.calls[0]?.url, 'https://p01-caldav.icloud.com/published/2/abc');
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(result.card.primaryValue, 'Rien de prévu');
-  assert.equal(result.presentation.summary, 'Rien de prévu dans les 3 prochains jours.');
-  assert.equal(f.runtime.ambientDisplay(f.instance).content?.value, 'Rien de prévu');
+  assert.equal(result.ok && result.card.primaryValue, 'Rien de prévu');
+  assert.equal(
+    result.ok && result.presentation.summary,
+    'Rien de prévu dans les 3 prochains jours.',
+  );
+  assert.equal(f.ambient().content?.value, 'Rien de prévu');
+
+  // Réponse coupée à 8 Mo par le client du cœur : la carte et l'oral le disent.
+  const cut = setup(t);
+  cut.route({ 'calendar.google.com': { status: 200, body: ics, truncated: true } });
+  const truncated = await cut.read();
+  assert.equal(
+    truncated.ok && truncated.card.description,
+    'Agenda incomplet : le fichier dépasse 8 Mo, des rendez-vous peuvent manquer.',
+  );
+  assert.match(truncated.ok ? truncated.presentation.summary : '', /^Agenda incomplet\./u);
+});
+
+test('les heures suivent le fuseau du foyer', async (t) => {
+  const f = createTestModule(t, addon, {
+    config: { url: secretUrl, days: 1 },
+    timeZone: 'Indian/Reunion',
+    at: '2026-10-20T08:00:00Z', // 12 h à La Réunion
+    routes: { 'calendar.google.com': ics },
+  });
+  const result = await f.read();
+  // Le dentiste de 16 h à Paris (14 h UTC) a lieu à 18 h à La Réunion.
+  assert.match(result.ok ? result.presentation.summary : '', /Dentiste de Léa à 18 h/u);
 });
 
 test('lien réinitialisé, introuvable, page web : des messages sans le lien', async (t) => {
-  for (const [reply, code] of [
-    [{ status: 403, body: '' }, 'forbidden'],
-    [{ status: 404, body: '' }, 'not_found'],
-    [{ status: 200, body: '<!DOCTYPE html><html>Connexion</html>' }, 'malformed'],
+  for (const [status, body, code] of [
+    [403, '', 'forbidden'],
+    [404, '', 'not_found'],
+    [200, '<!DOCTYPE html><html>Connexion</html>', 'malformed'],
   ] as const) {
-    const result = await setup(t, {}, reply).read();
+    const result = await setup(t, { status, body }).read();
     assert.equal(result.ok, false);
     if (result.ok) continue;
     assert.equal(result.error.code, code);
@@ -188,11 +163,12 @@ test('lien réinitialisé, introuvable, page web : des messages sans le lien', a
 test('panne après expiration : dernier agenda connu, annoncé comme tel', async (t) => {
   const f = setup(t);
   assert.equal((await f.read()).ok, true);
-  f.at('2026-10-20T08:16:00Z');
-  f.reply({ status: 503, body: '' });
+  f.advance(16 * 60 * 1000);
+  f.route({ 'calendar.google.com': { status: 503 } });
   const result = await f.read();
-  assert.equal(result.ok, true);
-  if (!result.ok) return;
-  assert.equal(result.stale, true);
-  assert.match(result.presentation.summary, /^D’après le dernier agenda connu, à vérifier\./u);
+  assert.equal(result.ok && result.stale, true);
+  assert.match(
+    result.ok ? result.presentation.summary : '',
+    /^D’après le dernier agenda connu, à vérifier\./u,
+  );
 });

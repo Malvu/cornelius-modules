@@ -30,8 +30,17 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 const addon: AddonDefinition<YoutubeConfig, YoutubeData> = {
   id: 'youtube',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'YouTube',
+  display: {
+    name: 'YouTube',
+    description: 'La dernière vidéo d’une chaîne, par défaut celle des Frères Poulain.',
+    icon: 'play',
+    keywords: ['youtube', 'vidéo', 'chaîne', 'frères poulain', 'shorts'],
+    example: { label: 'Les Frères Poulain', ref: 'freres-poulain' },
+    spoken: { head: 'les vidéos', repeats: ['youtube', 'videos', 'video', 'chaine'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: { channelId: 'UCjED9uS41ioeFuPfbR-OBlw', shorts: false },

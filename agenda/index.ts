@@ -1,7 +1,8 @@
 /** Agenda familial : les prochains rendez-vous d'un agenda partagé, par son lien iCal privé. */
 import { AddonCollectError, type AddonDefinition } from '#cornelius/addons';
 import { clip } from '../_lib/flux.js';
-import { CalendarError, parisDay, readCalendar, zonedTime } from './ics.js';
+import { dayIn, dayMs, iso, nextMidnight, startOfDay } from '../_lib/temps.js';
+import { CalendarError, readCalendar } from './ics.js';
 import configSchema from './config.schema.json' with { type: 'json' };
 import dataSchema from './data.schema.json' with { type: 'json' };
 
@@ -13,94 +14,96 @@ type AgendaEvent = {
   end: string;
   allDay: boolean;
 };
-type AgendaData = { name: string | null; days: number; events: AgendaEvent[] };
+type AgendaData = {
+  name: string | null;
+  /** Premier jour lu (minuit du foyer) et nombre de jours. */
+  from: string;
+  days: number;
+  /** Fichier coupé à 8 Mo : les derniers événements peuvent manquer. */
+  truncated: boolean;
+  events: AgendaEvent[];
+};
 
-const dayMs = 86_400_000;
 const maxEvents = 40;
 
-const time = new Intl.DateTimeFormat('fr-FR', {
-  timeZone: 'Europe/Paris',
-  hour: 'numeric',
-  minute: '2-digit',
-});
-const longDay = new Intl.DateTimeFormat('fr-FR', {
-  timeZone: 'UTC',
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-});
-const shortDay = new Intl.DateTimeFormat('fr-FR', {
-  timeZone: 'UTC',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-});
+const formats = new Map<string, Intl.DateTimeFormat>();
+function format(zone: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${zone}|${JSON.stringify(options)}`;
+  let formatter = formats.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('fr-FR', { timeZone: zone, ...options });
+    formats.set(key, formatter);
+  }
+  return formatter;
+}
 
-/** « 16 h », « 18 h 30 » : la façon dont on dit l'heure. */
-function hour(ms: number): string {
-  const [h, m] = time.format(ms).split(':');
+/** « 16 h », « 18 h 30 » : la façon dont on dit l'heure, dans le fuseau du foyer. */
+function hour(ms: number, zone: string): string {
+  const [h, m] = format(zone, { hour: 'numeric', minute: '2-digit' }).format(ms).split(':');
   return m === '00' ? `${Number(h)} h` : `${Number(h)} h ${m}`;
 }
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** Minuit à Paris d'un jour compté depuis 1970. */
-function midnight(day: number): number {
-  const date = new Date(day * dayMs);
-  return zonedTime(
-    {
-      year: date.getUTCFullYear(),
-      month: date.getUTCMonth() + 1,
-      day: date.getUTCDate(),
-      hour: 0,
-      minute: 0,
-      second: 0,
-    },
-    'Europe/Paris',
-  );
-}
-
+/** « aujourd'hui », « demain », « jeudi 22 octobre » (« jeu. 22 oct. » en court). */
 function dayLabel(day: number, today: number, short = false): string {
   if (day === today) return 'aujourd’hui';
   if (day === today + 1) return 'demain';
-  const date = new Date(day * dayMs);
+  const options: Intl.DateTimeFormatOptions = short
+    ? { weekday: 'short', day: 'numeric', month: 'short' }
+    : { weekday: 'long', day: 'numeric', month: 'long' };
   // Le premier du mois se dit et s'écrit « 1er ».
-  return (short ? shortDay : longDay).format(date).replace(/ 1 /u, ' 1er ');
+  return format('UTC', options)
+    .format(new Date(day * dayMs))
+    .replace(/ 1 /u, ' 1er ');
 }
 
 type Upcoming = AgendaEvent & { startMs: number; endMs: number; day: number; ongoing: boolean };
 
-/** Rendez-vous pas encore finis, recalculés à chaque présentation. */
-function upcoming(data: AgendaData, now: number): { today: number; events: Upcoming[] } {
-  const today = parisDay(now);
-  const events = data.events
+/** Rendez-vous pas encore finis de la période lue, recalculés à chaque présentation. */
+function upcoming(data: AgendaData, now: number, zone: string) {
+  const today = dayIn(now, zone);
+  const first = Math.max(today, dayIn(Date.parse(data.from), zone));
+  const events: Upcoming[] = data.events
     .map((event) => {
       const startMs = Date.parse(event.start);
       const endMs = Date.parse(event.end);
       const ongoing = startMs <= now;
-      // Un événement commencé avant aujourd'hui se range à aujourd'hui.
-      return { ...event, startMs, endMs, ongoing, day: Math.max(today, parisDay(startMs)) };
+      // Un événement commencé avant le premier jour se range à ce jour.
+      return { ...event, startMs, endMs, ongoing, day: Math.max(first, dayIn(startMs, zone)) };
     })
     .filter((event) => event.endMs > now)
     .sort((a, b) => a.day - b.day || Number(b.allDay) - Number(a.allDay) || a.startMs - b.startMs);
-  return { today, events };
+  return { today, first, events };
+}
+
+/** « dans les 7 prochains jours », « samedi 24 octobre », « du lundi 26 au dimanche 1er novembre ». */
+function horizonOf(data: AgendaData, today: number, zone: string): string {
+  const first = dayIn(Date.parse(data.from), zone);
+  const last = first + data.days - 1;
+  if (first <= today)
+    return data.days === 1 ? 'aujourd’hui' : `dans les ${data.days} prochains jours`;
+  if (first === last) return dayLabel(first, today);
+  return `du ${dayLabel(first, today)} au ${dayLabel(last, today)}`;
 }
 
 /** « à 16 h », « toute la journée », « jusqu'au dimanche 25 octobre », « en cours, jusqu'à 17 h ». */
-function when(event: Upcoming, today: number): string {
+function when(event: Upcoming, today: number, zone: string): string {
   if (event.allDay) {
-    const lastDay = parisDay(event.endMs - 1);
+    const lastDay = dayIn(event.endMs - 1, zone);
     return lastDay > event.day ? `jusqu’au ${dayLabel(lastDay, today)}` : 'toute la journée';
   }
-  if (event.ongoing) return `en cours, jusqu’à ${hour(event.endMs)}`;
-  return `à ${hour(event.startMs)}`;
+  if (event.ongoing) return `en cours, jusqu’à ${hour(event.endMs, zone)}`;
+  return `à ${hour(event.startMs, zone)}`;
 }
 
-function cardTime(event: Upcoming, today: number): string {
+function cardTime(event: Upcoming, today: number, zone: string): string {
   const day = capitalize(dayLabel(event.day, today, true));
   if (event.allDay)
-    return parisDay(event.endMs - 1) > event.day ? `${day} · plusieurs jours` : `${day} · journée`;
-  return event.ongoing ? `${day} · en cours` : `${day} ${hour(event.startMs)}`;
+    return dayIn(event.endMs - 1, zone) > event.day
+      ? `${day} · plusieurs jours`
+      : `${day} · journée`;
+  return event.ongoing ? `${day} · en cours` : `${day} ${hour(event.startMs, zone)}`;
 }
 
 function joinSpoken(items: string[]): string {
@@ -109,36 +112,85 @@ function joinSpoken(items: string[]): string {
     : `${items.slice(0, -1).join(', ')} et ${items.at(-1)}`;
 }
 
+/**
+ * Prochain instant où la carte permanente change sans nouvelle lecture : un rendez-vous qui
+ * commence (« en cours ») ou se termine (il disparaît), sinon minuit (« demain » devient
+ * « aujourd'hui »).
+ */
+function nextChange(events: Upcoming[], now: number, zone: string): string {
+  const times = events
+    .slice(0, 4)
+    .flatMap((event) => [event.startMs, event.endMs])
+    .filter((time) => time > now);
+  return iso(Math.min(nextMidnight(now, zone), ...times));
+}
+
 const addon: AddonDefinition<AgendaConfig, AgendaData> = {
   id: 'agenda',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Agenda',
+  display: {
+    name: 'Agenda',
+    description:
+      'Les prochains rendez-vous d’un agenda Google, iCloud ou Outlook, par son lien iCal privé.',
+    icon: 'calendar-days',
+    keywords: ['agenda', 'calendrier', 'rendez-vous', 'google', 'icloud', 'outlook', 'ical'],
+    example: { label: 'Agenda de la famille', ref: 'famille' },
+    spoken: { head: 'l’agenda', repeats: ['agenda', 'calendrier'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: { url: '', days: 7 },
-  dataVersion: 1,
+  dataVersion: 2,
   dataSchema,
   freshMs: 15 * 60 * 1000,
   tools: [
     {
       name: 'read',
       description:
-        'Lire les prochains rendez-vous de l’agenda configuré et afficher sa carte. Utiliser pour ' +
-        '« qu’est-ce qu’on a demain ? », « c’est quand le dentiste ? » ou « mon agenda de la semaine ».',
+        'Lire les rendez-vous de l’agenda configuré et afficher sa carte. Utiliser pour ' +
+        '« qu’est-ce qu’on a demain ? », « c’est quand le dentiste ? », « mon agenda de la semaine » ' +
+        'ou « on fait quoi samedi ? ». Sans argument : les prochains jours réglés dans la source.',
       parameters: {
         type: 'object',
         additionalProperties: false,
         required: ['instanceRef'],
         properties: { instanceRef: { type: ['string', 'null'] } },
       },
+      arguments: {
+        debut: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 60,
+          description:
+            'Premier jour à lire, compté depuis aujourd’hui : 0 aujourd’hui, 1 demain, 7 dans une semaine.',
+        },
+        jours: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 14,
+          description: 'Nombre de jours à lire à partir du premier : 1 pour une seule journée.',
+        },
+      },
     },
   ],
   async collect(context) {
-    const { days } = context.config;
+    const zone = context.timeZone;
+    const now = context.now();
+    const today = dayIn(now, zone);
+    const offset = typeof context.args?.debut === 'number' ? context.args.debut : 0;
+    const days =
+      typeof context.args?.jours === 'number'
+        ? context.args.jours
+        : context.args?.debut !== undefined
+          ? 1
+          : context.config.days;
+    const from = offset === 0 ? now : startOfDay(today + offset, zone);
+    const to = startOfDay(today + offset + days, zone);
     // « webcal:// » n'est qu'un « https:// » que les navigateurs ouvrent dans un agenda.
     const url = context.config.url.trim().replace(/^webcal:\/\//iu, 'https://');
-    const now = context.now();
     const response = await context.http.fetch({
       url,
       method: 'GET',
@@ -170,7 +222,7 @@ const addon: AddonDefinition<AgendaConfig, AgendaData> = {
       );
     let calendar;
     try {
-      calendar = readCalendar(response.text(), now, midnight(parisDay(now) + days));
+      calendar = readCalendar(response.text(), from, to, zone);
     } catch (error) {
       if (error instanceof CalendarError)
         throw new AddonCollectError(
@@ -182,13 +234,19 @@ const addon: AddonDefinition<AgendaConfig, AgendaData> = {
     const events: AgendaEvent[] = calendar.occurrences.slice(0, maxEvents).map((occurrence) => ({
       title: clip(occurrence.title, 200),
       location: occurrence.location ? clip(occurrence.location, 200) : null,
-      start: new Date(occurrence.start).toISOString(),
-      end: new Date(Math.max(occurrence.end, occurrence.start + 1)).toISOString(),
+      start: iso(occurrence.start),
+      end: iso(Math.max(occurrence.end, occurrence.start + 1)),
       allDay: occurrence.allDay,
     }));
     return {
-      data: { name: calendar.name ? clip(calendar.name, 120) : null, days, events },
-      // Une semaine sans rendez-vous est une réponse utile, pas une source vide.
+      data: {
+        name: calendar.name ? clip(calendar.name, 120) : null,
+        from: iso(startOfDay(today + offset, zone)),
+        days,
+        truncated: response.truncated === true,
+        events,
+      },
+      // Une période sans rendez-vous est une réponse utile, pas une source vide.
       source: { provider: 'ical', sourceId: context.instance.ref ?? context.instance.id },
     };
   },
@@ -196,26 +254,30 @@ const addon: AddonDefinition<AgendaConfig, AgendaData> = {
     present(snapshot, context) {
       const data = snapshot.data;
       if (!data) throw new Error('Aucun agenda à afficher.');
-      const { today, events } = upcoming(data, context.now());
+      const zone = context.timeZone;
+      const now = context.now();
+      const { today, events } = upcoming(data, now, zone);
       return {
         layout: 'list',
         title: 'Agenda',
         value: events.length ? null : 'Rien de prévu',
         subtitle: null,
         items: events.slice(0, 3).map((event) => ({
-          label: cardTime(event, today),
+          label: cardTime(event, today, zone),
           value: clip(event.title, 160),
         })),
+        refreshAt: nextChange(events, now, zone),
       };
     },
   },
   present(snapshot, context) {
     const data = snapshot.data;
     if (!data) throw new Error('Aucun agenda à présenter.');
+    const zone = context.timeZone;
     const now = context.now();
     const stale = snapshot.status === 'stale';
-    const { today, events } = upcoming(data, now);
-    const horizon = data.days === 1 ? 'aujourd’hui' : `dans les ${data.days} prochains jours`;
+    const { today, events } = upcoming(data, now, zone);
+    const horizon = horizonOf(data, today, zone);
     const first = events[0];
     // À l'oral : trois jours au plus, six rendez-vous au plus.
     const spokenDays: string[] = [];
@@ -225,7 +287,7 @@ const addon: AddonDefinition<AgendaConfig, AgendaData> = {
       if (!ofDay.length) break;
       told += ofDay.length;
       spokenDays.push(
-        `${capitalize(dayLabel(day, today))} : ${joinSpoken(ofDay.map((event) => `${event.title} ${when(event, today)}`))}.`,
+        `${capitalize(dayLabel(day, today))} : ${joinSpoken(ofDay.map((event) => `${event.title} ${when(event, today, zone)}`))}.`,
       );
     }
     const more = events.length - told;
@@ -233,19 +295,22 @@ const addon: AddonDefinition<AgendaConfig, AgendaData> = {
       title: clip(data.name ? `Agenda · ${data.name}` : 'Agenda', 80),
       primaryValue: first ? clip(first.title, 120) : 'Rien de prévu',
       subtitle: first
-        ? clip(`${capitalize(dayLabel(first.day, today))}, ${when(first, today)}`, 120)
+        ? clip(`${capitalize(dayLabel(first.day, today))}, ${when(first, today, zone)}`, 120)
         : capitalize(horizon),
       description: stale
         ? 'Dernier agenda connu : un rendez-vous a pu changer depuis.'
-        : first?.location
-          ? clip(first.location, 500)
-          : null,
+        : data.truncated
+          ? 'Agenda incomplet : le fichier dépasse 8 Mo, des rendez-vous peuvent manquer.'
+          : first?.location
+            ? clip(first.location, 500)
+            : null,
       items: events.slice(1, 6).map((event) => ({
-        label: cardTime(event, today),
+        label: cardTime(event, today, zone),
         value: clip(event.location ? `${event.title} · ${event.location}` : event.title, 160),
       })),
       summary:
         (stale ? 'D’après le dernier agenda connu, à vérifier. ' : '') +
+        (data.truncated ? 'Agenda incomplet. ' : '') +
         (events.length
           ? spokenDays.join(' ') +
             (more > 0 ? ` Et ${more} autre${more > 1 ? 's' : ''} ${horizon}.` : '')

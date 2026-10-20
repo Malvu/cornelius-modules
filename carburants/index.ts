@@ -1,13 +1,20 @@
 /** Prix des carburants d'une station, d'après le flux instantané du ministère de l'Économie. */
 import { AddonCollectError, type AddonDefinition, type AddonHttpClient } from '#cornelius/addons';
 import { compile } from '#cornelius/validation';
+import { dateIn } from '../_lib/temps.js';
 import configSchema from './config.schema.json' with { type: 'json' };
 import dataSchema from './data.schema.json' with { type: 'json' };
 
 type Fuel = 'gazole' | 'sp95' | 'sp98' | 'e10' | 'e85' | 'gplc';
 type CarburantsConfig = { stationId: string; stationLabel: string; fuel: Fuel | null };
 type Price = { fuel: Fuel; price: number; updated: string | null };
-type CarburantsData = { address: string; city: string; prices: Price[] };
+type CarburantsData = {
+  address: string;
+  city: string;
+  prices: Price[];
+  /** Carburant demandé à la voix (argument), pour dire s'il manque à cette station. */
+  asked?: Fuel;
+};
 
 type Station = {
   id: number;
@@ -52,12 +59,6 @@ const validateRecords = compile<{ results: Station[] }>({
 });
 
 const euro = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-const parisDay = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
 const shortDay = new Intl.DateTimeFormat('fr-FR', {
   timeZone: 'UTC',
   day: 'numeric',
@@ -145,9 +146,10 @@ function spokenPrice(price: number): string {
     : `${euros} euro${euros > 1 ? 's' : ''} ${rest}`;
 }
 
-function age(updated: string | null, now: number): string | null {
+/** Ancienneté d'un relevé, comptée en jours du foyer. */
+function age(updated: string | null, now: number, zone: string): string | null {
   if (!updated) return null;
-  const today = parisDay.format(now);
+  const today = dateIn(now, zone);
   const days = Math.round((Date.parse(today) - Date.parse(updated)) / dayMs);
   if (days <= 0) return 'aujourd’hui';
   if (days === 1) return 'hier';
@@ -157,8 +159,17 @@ function age(updated: string | null, now: number): string | null {
 const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
   id: 'carburants',
   apiVersion: 1,
-  version: '1.0.0',
+  version: '1.1.0',
+  minCoreVersion: '0.2.0',
   sourceLabel: 'Prix des carburants',
+  display: {
+    name: 'Prix des carburants',
+    description: 'Les prix affichés dans une station-service, carburant principal d’abord.',
+    icon: 'fuel',
+    keywords: ['carburant', 'essence', 'gazole', 'diesel', 'station', 'prix', 'sp98', 'e10'],
+    example: { label: 'Station de la maison', ref: 'station' },
+    spoken: { head: 'les prix', repeats: ['station', 'carburant', 'carburants', 'prix'] },
+  },
   configVersion: 1,
   configSchema,
   configDefaults: {
@@ -180,6 +191,14 @@ const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
         additionalProperties: false,
         required: ['instanceRef'],
         properties: { instanceRef: { type: ['string', 'null'] } },
+      },
+      arguments: {
+        carburant: {
+          type: 'string',
+          enum: fuels,
+          description:
+            'Carburant demandé, annoncé en premier : gazole, e10 (SP95-E10), sp95, sp98, e85 ou gplc.',
+        },
       },
     },
   ],
@@ -217,7 +236,10 @@ const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
     },
   },
   async collect(context) {
-    const { stationId, fuel } = context.config;
+    const { stationId } = context.config;
+    // « Et le SP98 ? » : le carburant demandé passe devant celui des réglages.
+    const asked = context.args?.carburant;
+    const fuel = typeof asked === 'string' ? (asked as Fuel) : context.config.fuel;
     const [station] = await records(context.http, `id=${stationId}`, 1, context.signal);
     if (!station)
       throw new AddonCollectError('not_found', 'Station introuvable : la chercher à nouveau.');
@@ -227,6 +249,7 @@ const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
         address: clean(station.adresse, 'Station').slice(0, 160),
         city: clean(station.ville, 'Commune inconnue').slice(0, 80),
         prices,
+        ...(typeof asked === 'string' ? { asked: asked as Fuel } : {}),
       },
       // Une station sans aucun prix publié répond, sans rien à dire.
       empty: prices.length === 0,
@@ -237,7 +260,15 @@ const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
     present(snapshot) {
       const data = snapshot.data;
       const [main, ...others] = data?.prices ?? [];
-      if (!data || !main) throw new Error('Aucun prix à afficher.');
+      if (!data) throw new Error('Aucun prix à afficher.');
+      if (!main)
+        return {
+          layout: 'metric',
+          title: 'Carburants',
+          value: 'Aucun prix',
+          subtitle: data.city,
+          items: [],
+        };
       return {
         layout: 'metric',
         title: 'Carburants',
@@ -252,10 +283,27 @@ const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
   present(snapshot, context) {
     const data = snapshot.data;
     const [main] = data?.prices ?? [];
-    if (!data || !main) throw new Error('Aucun prix à présenter.');
+    if (!data) throw new Error('Aucun prix à présenter.');
+    // La station répond sans prix publié (fermée, en travaux) : on le dit, sans inventer.
+    if (!main)
+      return {
+        title: `Carburants · ${data.city}`.slice(0, 80),
+        primaryValue: 'Aucun prix',
+        subtitle: data.address.slice(0, 120),
+        description: null,
+        items: [],
+        summary:
+          `La station de ${data.city}, ${data.address}, ne publie aucun prix pour le moment.`.slice(
+            0,
+            500,
+          ),
+        sources: ['carburants'],
+      };
     const now = context.now();
     const stale = snapshot.status === 'stale';
-    const old = data.prices.filter((p) => p.updated && age(p.updated, now)?.startsWith('le '));
+    const old = data.prices.filter(
+      (p) => p.updated && age(p.updated, now, context.timeZone)?.startsWith('le '),
+    );
     return {
       title: `Carburants · ${data.city}`.slice(0, 80),
       primaryValue: `${names[main.fuel].label} ${shown(main.price)}`,
@@ -263,17 +311,20 @@ const addon: AddonDefinition<CarburantsConfig, CarburantsData> = {
       description: stale
         ? 'Derniers prix connus : le service ne répond pas.'
         : old.length
-          ? `Prix plus anciens que d’hier : ${old.map((p) => `${names[p.fuel].label} ${age(p.updated, now)}`).join(', ')}.`.slice(
+          ? `Prix plus anciens que d’hier : ${old.map((p) => `${names[p.fuel].label} ${age(p.updated, now, context.timeZone)}`).join(', ')}.`.slice(
               0,
               500,
             )
           : null,
       items: data.prices.slice(0, 5).map((p) => ({
         label: names[p.fuel].label,
-        value: [shown(p.price), age(p.updated, now)].filter(Boolean).join(' · '),
+        value: [shown(p.price), age(p.updated, now, context.timeZone)].filter(Boolean).join(' · '),
       })),
       summary:
         (stale ? 'Derniers prix connus, à vérifier. ' : '') +
+        (data.asked && !data.prices.some((p) => p.fuel === data.asked)
+          ? `Pas de ${names[data.asked].spoken} à cette station. `
+          : '') +
         `À ${data.city}, ${data.address} : ` +
         data.prices
           .slice(0, 3)
