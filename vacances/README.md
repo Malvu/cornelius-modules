@@ -44,5 +44,5 @@ L’outil s’appelle `vacances__read`. Avec « Afficher en permanence sur le mi
 ## Voir aussi
 
 - [Créer un module](../docs/creer-un-module.md)
-- [Référence du contrat des modules](../docs/reference.md)
+- [Référence du contrat des modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md)
 - Code : [index.ts](index.ts), [config.schema.json](config.schema.json)

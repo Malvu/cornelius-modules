@@ -1,10 +1,10 @@
 # Créer un module
 
-Ce tutoriel construit pas à pas, dans ce dépôt, un module d’informations à partir du gabarit : un module « parking » qui annonce les places libres. Il s’adresse à une développeuse ou un développeur à l’aise avec TypeScript. Les règles complètes du contrat sont dans la [référence](reference.md).
+Ce tutoriel construit pas à pas, dans ce dépôt, un module d’informations à partir du gabarit : un module « parking » qui annonce les places libres. Il s’adresse à une développeuse ou un développeur à l’aise avec TypeScript. Les règles complètes du contrat sont dans la [référence](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md).
 
 Un module d’informations lit une source, garde des données propres et fournit la réponse orale et la carte. Pour déclencher une action (ouvrir un portail), utilisez plutôt une [commande HTTP](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md#les-commandes-http) de Cornelius : aucun code n’est nécessaire.
 
-Ce tutoriel construit une lecture ordinaire, la même à chaque appel et gardée en cache. Pour un module qui répond à une question libre (chercher dans des documents, interroger un service), suivez les mêmes étapes, puis déclarez un [outil à la demande](reference.md#loutil-à-la-demande) : `collect` reçoit alors la question dans `context.query`. Le module livré [Ragator](https://github.com/lfpoulain/Cornelius/blob/main/addons/ragator/index.ts) en est l’exemple.
+Ce tutoriel construit une lecture ordinaire, la même à chaque appel et gardée en cache. Pour un module qui répond à une question libre (chercher dans des documents, interroger un service), suivez les mêmes étapes, puis déclarez un [outil à la demande](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md#loutil-à-la-demande) : `collect` reçoit alors la question dans `context.query`. Le module livré [Ragator](https://github.com/lfpoulain/Cornelius/blob/main/addons/ragator/index.ts) en est l’exemple.
 
 ## Avant de commencer
 
@@ -76,7 +76,7 @@ L’outil vocal prend le nom `<id>__read` : ici `parking__read`.
 
 `data.schema.json` décrit les données normalisées que `collect` renvoie. Le serveur les vérifie après chaque lecture : des données non conformes sont refusées comme « mal formées ». Déclarez `additionalProperties: false`, les champs requis, et des bornes.
 
-Ni les réglages ni les données ne contiennent de secret. Un jeton se déclare à part (voir la [référence](reference.md#les-secrets)).
+Ni les réglages ni les données ne contiennent de secret. Un jeton se déclare à part (voir la [référence](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md#les-secrets)).
 
 ## 4. Écrire la collecte
 
@@ -116,7 +116,7 @@ return {
 };
 ```
 
-N’inventez jamais de valeur : une panne n’est pas « zéro place ». Les codes d’erreur sont listés dans la [référence](reference.md#les-erreurs-de-collecte).
+N’inventez jamais de valeur : une panne n’est pas « zéro place ». Les codes d’erreur sont listés dans la [référence](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md#les-erreurs-de-collecte).
 
 ## 5. Présenter la carte et la réponse orale
 
@@ -218,9 +218,9 @@ Les modules livrés ont un nom, une icône et une description écrits dans l’i
 
 ```text
 Crée un module Cornelius pour [besoin], identifiant [id] (minuscules, chiffres, « _ »),
-dans le dépôt cornelius-modules. Lis docs/reference.md, docs/creer-un-module.md,
-puis ../cornelius/shared/addons.ts, ../cornelius/server/addons/runtime.ts et
-../cornelius/server/addons/registry.ts. Pars d'une copie de _template, sans garder son
+dans le dépôt cornelius-modules. Lis docs/creer-un-module.md, puis dans ../cornelius :
+docs/modules/reference.md, shared/addons.ts, server/addons/runtime.ts et
+server/addons/registry.ts. Pars d'une copie de _template, sans garder son
 fournisseur fictif. Inspire-toi du module livré le plus proche dans ../cornelius/addons
 (clock, weather, transit ; ragator pour une question libre), sans le modifier.
 
@@ -242,7 +242,7 @@ ce qui est testé et ce qui reste à essayer avec le vrai fournisseur et à la v
 
 ## Voir aussi
 
-- [Référence du contrat des modules](reference.md)
+- [Référence du contrat des modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md)
 - [Fiche à remplir](../_template/README.md)
 - [Les modules dans Cornelius](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md) : sources, jetons, catalogue
 - Modules livrés, comme exemples : [Heure](https://github.com/lfpoulain/Cornelius/blob/main/addons/clock/README.md), [Météo](https://github.com/lfpoulain/Cornelius/blob/main/addons/weather/README.md), [Transports](https://github.com/lfpoulain/Cornelius/blob/main/addons/transit/README.md)

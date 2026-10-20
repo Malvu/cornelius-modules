@@ -46,5 +46,5 @@ L’outil s’appelle `[id]__read`. [Avec « Afficher en permanence sur le miroi
 
 - [Les modules dans Cornelius](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md)
 - [Créer un module](../docs/creer-un-module.md)
-- [Référence du contrat des modules](../docs/reference.md)
+- [Référence du contrat des modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/reference.md)
 - Code : [index.ts](index.ts), [config.schema.json](config.schema.json)
