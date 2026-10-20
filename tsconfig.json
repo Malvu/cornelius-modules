@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"],
+    "typeRoots": ["../cornelius/node_modules/@types"],
+    "paths": {
+      "#cornelius/addons": ["../cornelius/shared/addons.ts"],
+      "#cornelius/validation": ["../cornelius/shared/validation.ts"],
+      "#cornelius/testing": ["../cornelius/server/addons/testing.ts"]
+    }
+  },
+  "include": ["*/**/*.ts"],
+  "exclude": ["node_modules"]
+}

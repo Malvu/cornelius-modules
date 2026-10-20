@@ -1,0 +1,17 @@
+{
+  "name": "cornelius-modules",
+  "version": "0.1.0",
+  "description": "Modules externes de Cornelius, mis à jour sans toucher au miroir.",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.2.0 <25"
+  },
+  "scripts": {
+    "test": "node scripts/cornelius.mjs test",
+    "check": "node scripts/cornelius.mjs check",
+    "format": "node scripts/cornelius.mjs format",
+    "format:check": "node scripts/cornelius.mjs format:check"
+  }
+}
