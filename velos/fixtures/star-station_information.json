@@ -1,0 +1,30 @@
+{
+  "last_updated": 1792501809,
+  "ttl": 60,
+  "data": {
+    "stations": [
+      {
+        "station_id": "5501",
+        "name": "République",
+        "region_id": "region_rennes_metropole_35238",
+        "lon": -1.678037,
+        "lat": 48.110026,
+        "address": "19 Quai Lamartine",
+        "post_code": "35238",
+        "rental_methods": ["KEY", "ANDROIDPAY", "PHONE", "CREDITCARD"],
+        "capacity": 45
+      },
+      {
+        "station_id": "5502",
+        "name": "Mairie - Opéra",
+        "region_id": "region_rennes_metropole_35238",
+        "lon": -1.678757,
+        "lat": 48.111624,
+        "address": "11 galeries du Théâtre",
+        "post_code": "35238",
+        "rental_methods": ["KEY", "ANDROIDPAY", "PHONE", "CREDITCARD"],
+        "capacity": 24
+      }
+    ]
+  }
+}

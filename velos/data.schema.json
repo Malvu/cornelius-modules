@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VelosData v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["station", "system", "open", "bikes", "mechanical", "electric", "docks", "reported"],
+  "properties": {
+    "station": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "system": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "open": { "type": "boolean", "description": "Station installée et en location." },
+    "bikes": { "type": "integer", "minimum": 0, "maximum": 10000 },
+    "mechanical": { "type": ["integer", "null"], "minimum": 0, "maximum": 10000 },
+    "electric": { "type": ["integer", "null"], "minimum": 0, "maximum": 10000 },
+    "docks": { "type": ["integer", "null"], "minimum": 0, "maximum": 10000 },
+    "reported": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

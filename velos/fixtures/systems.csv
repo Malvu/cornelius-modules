@@ -1,0 +1,9 @@
+Country Code,Name,Location,System ID,URL,Auto-Discovery URL,Supported Versions,Authentication Info URL,Authentication Type,Authentication Parameter Name
+BE,Villo,Brussels,bruxelles,https://www.villo.be/,https://api.cyclocity.fr/contracts/bruxelles/gbfs/v3/gbfs.json,2.3 ; 3.0,,,
+FR,Bird Bordeaux,Bordeaux,bird-bordeaux,https://bird.co,https://mds.bird.co/gbfs/v2/public/bordeaux/gbfs.json,1.1 ; 2.3,,,
+FR,Citiz Rennes Métropole,Rennes,citiz_rennes_metropole,https://citiz.coop/,https://backend.citiz.fr/public/provider/19/gbfs/3.0/gbfs.json,3.0,,,
+FR,Getaround Rennes,Rennes,getaround_rennes,https://getaround.com/car-rental/rennes,https://getaround.com/gbfs/v3/rennes/gbfs,3.0,,,
+FR,Le Vélo par TBM,Bordeaux,velo-tbm-bordeaux,https://www.infotbm.com/fr/le-velo,https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3/gbfs.json?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt,3.0,,,
+FR,LE vélo STAR,Rennes,le_velo_star,https://www.star.fr/le-velo/nos-offres/vls/,https://eu.ftp.opendatasoft.com/star/gbfs/gbfs.json,1.0,,,
+FR,Vélib' Metropole,Paris,Paris,https://www.velib-metropole.fr/,https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/gbfs.json,1.0,,,
+FR,Vélibéo,Brive-la-Gaillarde,velibeo,https://velibeo.ecovelo.mobi,https://api.gbfs.v3.0.ecovelo.mobi/velibeo/gbfs.json,2.2 ; 3.0,,,

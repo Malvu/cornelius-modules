@@ -1,0 +1,25 @@
+{
+  "ttl": 0,
+  "version": "3.0",
+  "data": {
+    "feeds": [
+      {
+        "name": "system_information",
+        "url": "https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3/system_information.json?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt"
+      },
+      {
+        "name": "vehicle_types",
+        "url": "https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3/vehicle_types.json?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt"
+      },
+      {
+        "name": "station_information",
+        "url": "https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3/station_information.json?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt"
+      },
+      {
+        "name": "station_status",
+        "url": "https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3/station_status.json?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt"
+      }
+    ]
+  },
+  "last_updated": "2026-10-20T13:10:48Z"
+}

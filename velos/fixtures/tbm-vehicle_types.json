@@ -1,0 +1,30 @@
+{
+  "ttl": 86400,
+  "version": "3.0",
+  "data": {
+    "vehicle_types": [
+      {
+        "name": [
+          {
+            "text": "Vélo électrique",
+            "language": "fr"
+          }
+        ],
+        "vehicle_type_id": "classic",
+        "form_factor": "bicycle",
+        "rider_capacity": 1,
+        "propulsion_type": "human",
+        "return_constraint": "any_station"
+      },
+      {
+        "vehicle_type_id": "electric",
+        "form_factor": "bicycle",
+        "rider_capacity": 1,
+        "propulsion_type": "electric_assist",
+        "return_constraint": "any_station",
+        "max_range_meters": 50000
+      }
+    ]
+  },
+  "last_updated": "2026-10-01T16:58:08Z"
+}

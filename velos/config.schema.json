@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VelosConfig v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["systemUrl", "systemLabel", "stationId", "stationLabel"],
+  "properties": {
+    "systemUrl": {
+      "title": "Réseau",
+      "description": "Cherchez le réseau par sa ville ou son nom (Vélib’, LE vélo STAR, V’Lille…).",
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https://",
+      "maxLength": 300
+    },
+    "systemLabel": {
+      "title": "Nom du réseau",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "stationId": {
+      "title": "Station",
+      "description": "Cherchez la station par son nom, une fois le réseau choisi.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:-]{1,120}$",
+      "maxLength": 120
+    },
+    "stationLabel": {
+      "title": "Nom de la station",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    }
+  }
+}

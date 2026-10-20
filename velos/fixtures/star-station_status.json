@@ -1,0 +1,26 @@
+{
+  "last_updated": 1792501809,
+  "ttl": 0,
+  "data": {
+    "stations": [
+      {
+        "station_id": "5501",
+        "num_bikes_available": 0,
+        "num_docks_available": 0,
+        "is_installed": 0,
+        "is_renting": 0,
+        "is_returning": 0,
+        "last_reported": 1792501748
+      },
+      {
+        "station_id": "5502",
+        "num_bikes_available": 2,
+        "num_docks_available": 21,
+        "is_installed": 1,
+        "is_renting": 1,
+        "is_returning": 1,
+        "last_reported": 1792501748
+      }
+    ]
+  }
+}

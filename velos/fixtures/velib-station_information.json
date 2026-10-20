@@ -1,0 +1,17 @@
+{
+  "lastUpdatedOther": 1792501819,
+  "ttl": 3600,
+  "data": {
+    "stations": [
+      {
+        "station_id": 213688169,
+        "stationCode": "16107",
+        "name": "Benjamin Godard - Victor Hugo",
+        "lat": 48.865983,
+        "lon": 2.275725,
+        "capacity": 35,
+        "station_opening_hours": null
+      }
+    ]
+  }
+}
