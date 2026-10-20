@@ -33,6 +33,11 @@ Cornelius étant privé, la vérification automatique a besoin du secret `CORNEL
 - Une fiche `<id>/README.md` remplie à partir de [la fiche du gabarit](_template/README.md), avec la licence des données.
 - Une ligne dans le tableau des modules du [README](README.md#-les-modules) et dans le [CHANGELOG](CHANGELOG.md).
 - `minCoreVersion` si le module s’appuie sur un ajout récent de Cornelius.
+- Des fixtures sans contenu protégé : les réponses de fournisseurs de données publiques sont enregistrées telles quelles ; pour la presse, des articles fictifs au format exact du flux.
+
+## Le code partagé
+
+Le dossier `_lib/` réunit ce que plusieurs modules utilisent ; son nom commence par « _ », Cornelius ne le charge donc pas comme un module. Il contient `flux.ts` : lecture des flux RSS et Atom, coupe des textes sur un mot, ancienneté (« il y a 3 heures »). Un module l’importe par un chemin relatif (`../_lib/flux.js`) et reste sans autre dépendance. Une fonction n’y entre que lorsqu’au moins deux modules s’en servent ; avant, elle reste dans son module, comme `agenda/ics.ts`.
 
 ## Conventions
 
