@@ -1,0 +1,30 @@
+{
+  "connections": [
+    {
+      "from": {
+        "station": "Lausanne, Chailly-Village",
+        "departure": "2026-10-29T00:18:00+0100"
+      },
+      "to": {
+        "station": "Lausanne, Ouchy-Olympique",
+        "arrival": "2026-10-29T01:07:00+0100"
+      },
+      "duration": "00d00:49:00",
+      "transfers": 0,
+      "products": ["6"]
+    },
+    {
+      "from": {
+        "station": "Lausanne, Chailly-Village",
+        "departure": "2026-10-29T00:41:00+0100"
+      },
+      "to": {
+        "station": "Lausanne, Ouchy-Olympique",
+        "arrival": "2026-10-29T01:02:00+0100"
+      },
+      "duration": "00d00:21:00",
+      "transfers": 1,
+      "products": ["B 7", "m2"]
+    }
+  ]
+}

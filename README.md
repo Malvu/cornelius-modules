@@ -41,6 +41,8 @@ Cornelius livre ses modules de base avec lui. Ce dépôt accueille **tous les au
 | 🏖️ **Vacances et jours fériés** | En vacances ou pas, prochaines vacances scolaires de la zone, prochain jour férié ; affichage permanent possible | aucun | [vacances](vacances/README.md) |
 | 🚲 **Vélos en libre-service** | Vélos (mécaniques, électriques) et places libres d’une station : Vélib’, V’Lille, Vélo’v, STAR, TBM… (norme GBFS) | aucun | [velos](velos/README.md) |
 | ▶️ **YouTube** | La dernière vidéo d’une chaîne (par défaut, Les Frères Poulain), avec ou sans les Shorts | aucun | [youtube](youtube/README.md) |
+| 🚌 **Arrêts et itinéraires** | N'importe quel arrêt de Suisse : les lignes qui le desservent, le prochain départ de chacune, et l'itinéraire avec correspondances et changements ; la ville est facultative | aucun | [arrets](arrets/README.md) |
+| 🔔 **Perturbations** | Travaux, déviations et lignes interrompues, filtrés sur les lignes et les arrêts du foyer, d'après les annonces des exploitants suisses | jeton gratuit | [perturbations](perturbations/README.md) |
 
 Livrés avec Cornelius, et donc absents d’ici : Heure, Météo, Transports, Ragator. Voir [Les modules](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md) dans Cornelius.
 

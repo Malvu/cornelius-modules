@@ -8,8 +8,21 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 **Modifié**
 
-- Le dépôt passe de la PolyForm Noncommercial License 1.0.0 à la licence MIT : usage commercial permis pour tous, auteurs compris. Les contributeurs gardent leurs droits ; la clause qui autorisait les auteurs de Cornelius à redistribuer les contributions sous d’autres conditions disparaît. Cornelius reste sous PolyForm Noncommercial.
+- Le dépôt passe de la PolyForm Noncommercial License 1.0.0 à la licence MIT, à la différence de Cornelius.
 - La fiche du gabarit gagne une section « Auteur ».
+
+### 2026-10-29 : module Arrêts et itinéraires
+
+**Ajouté**
+
+- Module **Arrêts et itinéraires** (`arrets`, 1.2.0), par [Malvu](https://github.com/Malvu) : n'importe quel arrêt de Suisse, les lignes qui le desservent et leur prochain départ, et l'itinéraire entre deux lieux avec ses changements. La ville est facultative : vide, la recherche porte sur tout le pays. Les gares germanophones sont cherchées sous leur nom français (« Berne » donne Bern). Source : transport.opendata.ch, sans jeton.
+
+### 2026-10-29 : module Perturbations
+
+**Ajouté**
+
+- Module **Perturbations** (`perturbations`, 1.0.0), par [Malvu](https://github.com/Malvu) : les annonces de trafic du hub suisse (SIRI-SX), filtrées sur les lignes et les arrêts du foyer. Cache de dix minutes pour tenir la limite de deux appels par minute ; jeton gratuit à déclarer. Source : opentransportdata.swiss.
+
 
 ### 2026-10-20 : passage à Cornelius 0.2.0
 
