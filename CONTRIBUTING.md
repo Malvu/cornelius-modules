@@ -49,4 +49,6 @@ Le dossier `_lib/` réunit ce que plusieurs modules utilisent ; son nom commence
 
 ## Licence des contributions
 
-Ce dépôt est sous [PolyForm Noncommercial License 1.0.0](LICENSE), comme Cornelius. En proposant un changement, vous confirmez en être l’auteur ou avoir le droit de le proposer, et vous acceptez qu’il soit distribué sous cette licence. Vous autorisez aussi les auteurs de Cornelius à le distribuer sous d’autres conditions, notamment dans une licence commerciale accordée par écrit.
+Ce dépôt est sous [licence MIT](LICENSE), à la différence de Cornelius. En proposant un changement, vous confirmez en être l’auteur ou avoir le droit de le proposer, et vous acceptez qu’il soit distribué sous cette licence. Vous gardez vos droits d’auteur : la licence MIT donne les mêmes droits à tous, vous compris, et ne cède rien de plus aux auteurs de Cornelius.
+
+L’auteur d’un module est cité dans sa fiche (section « Auteur ») et dans l’entrée du [CHANGELOG](CHANGELOG.md) qui l’ajoute.

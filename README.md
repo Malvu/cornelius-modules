@@ -9,7 +9,7 @@
   <img alt="Contrat des modules v1" src="https://img.shields.io/badge/contrat-apiVersion%201-3fb7a3?style=flat-square" />
   <img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-3fb7a3?style=flat-square&logo=nodedotjs&logoColor=white" />
   <img alt="En français" src="https://img.shields.io/badge/langue-fran%C3%A7ais-3fb7a3?style=flat-square" />
-  <a href="LICENSE"><img alt="Licence PolyForm Noncommercial 1.0.0" src="https://img.shields.io/badge/licence-PolyForm%20NC%201.0.0-b39dff?style=flat-square" /></a>
+  <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-b39dff?style=flat-square" /></a>
 </p>
 
 <p>
@@ -127,4 +127,4 @@ Les règles complètes vivent dans Cornelius, à côté du code qu’elles décr
 
 ## 📜 Licence
 
-Ce dépôt est distribué, comme Cornelius, sous la [PolyForm Noncommercial License 1.0.0](LICENSE) : utilisation, partage et modification libres pour un usage non commercial, en gardant la ligne `Required Notice` du fichier `LICENSE`. Les données des fournisseurs gardent leur propre licence, indiquée dans la fiche de chaque module.
+Les modules de ce dépôt sont sous [licence MIT](LICENSE) : utilisation, partage et modification libres, y compris pour un usage commercial, en gardant la notice du fichier `LICENSE`. Chaque auteur garde ses droits sur ce qu’il a écrit. Cornelius lui-même reste sous la [PolyForm Noncommercial License 1.0.0](https://github.com/lfpoulain/Cornelius/blob/main/LICENSE). Les données des fournisseurs gardent leur propre licence, indiquée dans la fiche de chaque module.

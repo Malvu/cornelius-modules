@@ -42,6 +42,10 @@ Dans **Modules → [Nom affiché, celui de `display.name`] → Ajouter une sourc
 
 L’outil s’appelle `[id]__read`. [Précisions acceptées à la voix, si l’outil déclare des `arguments` ; sinon, supprimez cette phrase.] [Avec « Afficher en permanence sur le miroir », le miroir montre … / Ce module ne propose pas d’affichage permanent.]
 
+## Auteur
+
+[Votre nom, et un lien vers votre profil si vous le souhaitez.]
+
 ## Voir aussi
 
 - [Les modules dans Cornelius](https://github.com/lfpoulain/Cornelius/blob/main/docs/modules/README.md)

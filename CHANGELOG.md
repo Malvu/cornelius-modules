@@ -4,6 +4,13 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 ## Non publié
 
+### 2026-10-29 : licence MIT
+
+**Modifié**
+
+- Le dépôt passe de la PolyForm Noncommercial License 1.0.0 à la licence MIT : usage commercial permis pour tous, auteurs compris. Les contributeurs gardent leurs droits ; la clause qui autorisait les auteurs de Cornelius à redistribuer les contributions sous d’autres conditions disparaît. Cornelius reste sous PolyForm Noncommercial.
+- La fiche du gabarit gagne une section « Auteur ».
+
 ### 2026-10-20 : passage à Cornelius 0.2.0
 
 **Modifié**
