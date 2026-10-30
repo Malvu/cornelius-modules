@@ -11,7 +11,8 @@ const setup = (
   createTestModule(t, addon, {
     at: '2026-10-30T07:00:00Z',
     timeZone: 'Europe/Zurich',
-    config: options.config,
+    // Le départ réglé est facultatif : les tests qui ne le donnent pas prennent celui-ci.
+    config: options.config ?? { origine: 'Domicile, Lausanne' },
     routes: { computeRoutes: options.route ?? (routes as TestReply) },
     ...(options.secret === false ? {} : { secrets: { googleKey: 'cle-de-test' } }),
   });
@@ -42,6 +43,26 @@ test('un trajet donne la durée, la distance et le trafic', async (t) => {
   assert.deepEqual(f.contract(invoked.outcome), []);
 });
 
+test('« de Genève à Zurich » donne les deux bouts sans réglage de départ', async (t) => {
+  const f = setup(t, { config: {} });
+  const invoked = await f.invoke('trajet', { query: 'de Genève à Zurich' });
+  assert.equal(invoked.outcome.ok, true);
+  if (!invoked.outcome.ok) return;
+  const body = JSON.parse(f.calls[0]?.body ?? '{}');
+  assert.deepEqual(body.origin, { address: 'Genève' });
+  assert.deepEqual(body.destination, { address: 'Zurich' });
+  assert.equal(invoked.outcome.card.subtitle, 'Genève → Zurich');
+});
+
+test('sans départ réglé, une destination seule est refusée', async (t) => {
+  const f = setup(t, { config: {} });
+  const invoked = await f.invoke('trajet', { query: 'Genève' });
+  assert.equal(invoked.outcome.ok, false);
+  if (invoked.outcome.ok) return;
+  assert.equal(invoked.outcome.error.code, 'config_invalid');
+  assert.match(invoked.outcome.error.message, /Indiquez le départ/u);
+});
+
 test('deux bouts dans la question, et « domicile » renvoie au réglage', async (t) => {
   const f = setup(t);
   const invoked = await f.invoke('trajet', { query: 'domicile > Genève' });
@@ -58,7 +79,9 @@ test('deux bouts dans la question, et « domicile » renvoie au réglage', async
 });
 
 test('« bureau » désigne la destination réglée', async (t) => {
-  const f = setup(t, { config: { destination: 'EPFL, Lausanne' } });
+  const f = setup(t, {
+    config: { origine: 'Domicile, Lausanne', destination: 'EPFL, Lausanne' },
+  });
   const invoked = await f.invoke('trajet', { query: 'bureau' });
   assert.equal(invoked.outcome.ok, true);
   if (!invoked.outcome.ok) return;

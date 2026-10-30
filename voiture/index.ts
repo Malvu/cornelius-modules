@@ -82,11 +82,12 @@ function fold(value: string): string {
     .trim();
 }
 
-/** Les deux bouts d'un trajet : « Genève » seul, « domicile > Genève », « Lausanne vers Genève ». */
+/** Les deux bouts d'un trajet : « Genève » seul, « de Genève à Zurich », « Chailly > gare ». */
 function bothEnds(query: string): { from: string; to: string } | null {
-  const match = /^(.*?)\s*(?:>|→|->|\svers\s|\sà\s)\s*(.+)$/iu.exec(query.trim());
+  const match = /^(.*?)\s*(?:>|→|->|\svers\s|\sà\s|\sjusqu'à\s)\s*(.+)$/iu.exec(query.trim());
   if (!match) return null;
-  const from = text(match[1], 120);
+  // « de Genève à Zurich » : la préposition reste sur le premier bout, on l'enlève.
+  const from = text(match[1], 120).replace(/^(?:de|depuis|d')\s+/iu, '');
   const to = text(match[2], 120);
   return from && to ? { from, to } : null;
 }
@@ -120,7 +121,7 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
   },
   configVersion: 1,
   configSchema,
-  configDefaults: { origine: 'Domicile, Lausanne', destination: null },
+  configDefaults: { origine: null, destination: null },
   dataSchema,
   dataVersion: 1,
   // Le trafic change vite, mais la question se pose une ou deux fois : deux minutes suffisent.
@@ -138,9 +139,10 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
       description:
         'Calculer un trajet en voiture, avec la durée, la distance et ce que le trafic ajoute. ' +
         'Utiliser pour « combien de temps en voiture ? », « c’est long d’aller à Genève en ' +
-        'voiture ? », « je vais au bureau, combien de temps ? ». query : la destination seule ' +
-        '(« Genève »), ou les deux bouts séparés par « > » (« Domicile > Genève »). Pour le ' +
-        'travail, passer « bureau » : la source le traduit en adresse réelle. Ne jamais inventer ' +
+        'voiture ? », « je vais au bureau, combien de temps ? ». N’importe quel trajet de Suisse ' +
+        'est accepté. query : la destination seule (« Genève ») quand le départ est réglé, ou ' +
+        'les deux bouts (« Chailly, Lausanne > Genève », « de Genève à Zurich »). Pour le ' +
+        'travail, passer « bureau » ; pour le réglage de départ, « domicile ». Ne jamais inventer ' +
         'une durée ni une distance : si Google ne trouve pas de trajet, le dire.',
       parameters: {
         type: 'object',
@@ -179,7 +181,7 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
     if (!origin)
       throw new AddonCollectError(
         'config_invalid',
-        'Indiquez le départ : « Domicile > Genève », ou réglez l’origine de la source.',
+        'Indiquez le départ : « de Genève à Zurich », « Chailly, Lausanne > Genève », ou réglez le point de départ de la source.',
         false,
       );
     const response = await context.http.fetch({

@@ -15,8 +15,10 @@ Dans **Modules → Trajets en voiture → Ajouter une source** :
 
 | Réglage | Effet | Par défaut |
 | --- | --- | --- |
-| Point de départ | L'adresse d'où partent les trajets quand la question ne le dit pas ; le mot « domicile » y renvoie | `Domicile, Lausanne` |
+| Point de départ (facultatif) | L'adresse d'où partent les trajets quand la question ne le dit pas ; le mot « domicile » y renvoie. Vide, la question doit nommer les deux bouts | vide |
 | Destination par défaut (facultatif) | L'adresse que désigne le mot « bureau » | vide |
+
+N'importe quel trajet de Suisse est accepté : « Chailly, Lausanne > Genève », « de Genève à Zurich », « Lausanne vers Sion ». Le réglage de départ n'est qu'un raccourci.
 
 ## La clé Google
 

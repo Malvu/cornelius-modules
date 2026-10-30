@@ -2,15 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["origine"],
+  "required": [],
   "properties": {
     "origine": {
-      "title": "Point de départ",
-      "description": "L'adresse d'où partent les trajets quand la question ne le dit pas, par exemple « Domicile, Lausanne ». Le mot « domicile » y renvoie.",
-      "type": "string",
-      "minLength": 1,
+      "title": "Point de départ (facultatif)",
+      "description": "L'adresse d'où partent les trajets quand la question ne le dit pas, par exemple « Chailly, Lausanne ». Le mot « domicile » y renvoie. Laisser vide pour toujours dire les deux bouts : « de Genève à Zurich ».",
+      "type": ["string", "null"],
       "maxLength": 120,
-      "examples": ["Domicile, Lausanne"]
+      "examples": ["Chailly, Lausanne"]
     },
     "destination": {
       "title": "Destination par défaut (facultatif)",
