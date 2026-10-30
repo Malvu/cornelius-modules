@@ -4,6 +4,12 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 ## Non publié
 
+### 2026-10-30 : heure de départ dans Arrêts et itinéraires
+
+**Modifié**
+
+- Module **Arrêts et itinéraires** (`arrets`, 1.3.0) : nouvel outil `arrets__partir`, qui répond à « à quelle heure je pars pour être au bureau à 9 h ? ». Il cherche les trajets qui arrivent avant l'échéance, garde le dernier départ utile et annonce la marge. L'heure d'arrivée passe par des arguments bornés (`heure`, `minute`) ; la description de l'outil demande à Cornelius de poser la question quand elle manque. Nouveau réglage « Destination habituelle » (`bureau`), d'où `configVersion` 2 et `dataVersion` 4.
+
 ### 2026-10-29 : licence MIT
 
 **Modifié**

@@ -45,7 +45,7 @@ test('définition conforme et outils annoncés', (t) => {
   assert.equal(f.runtime.validateConfig(addon.id, addon.configDefaults).ok, true);
   assert.deepEqual(
     f.runtime.tools().map((tool) => tool.name),
-    ['arrets__read', 'arrets__ask', 'arrets__trajet'],
+    ['arrets__read', 'arrets__ask', 'arrets__trajet', 'arrets__partir'],
   );
 });
 
@@ -249,4 +249,69 @@ test('un flux en panne devient une erreur compréhensible', async (t) => {
   assert.equal(result.ok, false);
   if (result.ok) return;
   assert.equal(result.error.code, 'unavailable');
+});
+
+test('une heure d’arrivée donne le dernier départ utile et la marge', async (t) => {
+  const f = setup(t);
+  const invoked = await f.invoke('partir', { query: 'Ouchy', heure: 1, minute: 30 });
+  assert.equal(invoked.outcome.ok, true);
+  if (!invoked.outcome.ok) return;
+  const url = f.calls.find((call) => call.url.includes('/connections'))?.url ?? '';
+  // La question est posée à l'envers : on demande les trajets qui arrivent avant 01:30.
+  assert.ok(url.includes('isArrivalTime=1'));
+  assert.ok(url.includes('time=01%3A30'));
+  // Deux trajets arrivent avant 01:30 : c'est le plus tardif qui compte, pas le plus rapide.
+  assert.equal(invoked.outcome.card.primaryValue, '00:41');
+  assert.equal(
+    invoked.outcome.card.subtitle,
+    'Lausanne, Chailly-Village → Lausanne, Ouchy-Olympique',
+  );
+  assert.deepEqual(invoked.outcome.card.items[0], {
+    label: '00:41 → 01:02',
+    value: '21 min · 1 correspondance · B 7, m2',
+  });
+  // Arrivée à 01:02 pour une échéance de 01:30 : vingt-huit minutes d'avance.
+  assert.match(invoked.outcome.presentation.summary, /28 minutes d’avance/u);
+  assert.deepEqual(f.contract(invoked.outcome), []);
+});
+
+test('une échéance vaut pour un autre départ que l’arrêt habituel', async (t) => {
+  const f = setup(t);
+  // Rien ne limite la question au trajet maison-bureau : n'importe quel couple d'arrêts.
+  const invoked = await f.invoke('partir', { query: 'Bel-Air > Ouchy', heure: 1, minute: 30 });
+  assert.equal(invoked.outcome.ok, true);
+  if (!invoked.outcome.ok) return;
+  assert.equal(invoked.outcome.card.subtitle, 'Lausanne, Bel-Air → Lausanne, Ouchy-Olympique');
+  assert.deepEqual(f.contract(invoked.outcome), []);
+});
+
+test('le mot « bureau » désigne la destination réglée', async (t) => {
+  const f = setup(t, { bureau: 'Lausanne, Bel-Air' });
+  // La personne dit « bureau » : la source le traduit en arrêt, sans le faire épeler.
+  const invoked = await f.invoke('partir', { query: 'bureau', heure: 1, minute: 30 });
+  assert.equal(invoked.outcome.ok, true);
+  if (!invoked.outcome.ok) return;
+  assert.equal(invoked.outcome.card.subtitle, 'Lausanne, Chailly-Village → Lausanne, Bel-Air');
+  assert.deepEqual(f.contract(invoked.outcome), []);
+});
+
+test('sans heure d’arrivée, aucun calcul d’échéance n’est lancé', async (t) => {
+  const f = setup(t);
+  // L'outil est prévu pour être appelé après avoir demandé l'heure ; s'il arrive quand même
+  // sans elle, le module répond comme à une question d'arrêt, sans interroger les trajets.
+  const invoked = await f.invoke('partir', { query: 'Bel-Air' });
+  assert.equal(invoked.outcome.ok, true);
+  assert.equal(
+    f.calls.some((call) => call.url.includes('/connections')),
+    false,
+  );
+});
+
+test('aucun trajet n’arrive avant l’heure demandée : le module le dit', async (t) => {
+  const f = setup(t);
+  const invoked = await f.invoke('partir', { query: 'Ouchy', heure: 0, minute: 30 });
+  assert.equal(invoked.outcome.ok, false);
+  if (invoked.outcome.ok) return;
+  assert.equal(invoked.outcome.error.code, 'not_found');
+  assert.match(invoked.outcome.error.message, /Aucun trajet n’arrive avant 00:30/u);
 });

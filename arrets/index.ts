@@ -8,7 +8,13 @@ import { compile } from '#cornelius/validation';
 import configSchema from './config.schema.json' with { type: 'json' };
 import dataSchema from './data.schema.json' with { type: 'json' };
 
-type ArretsConfig = { ville: string | null; arret: string; limite: number };
+type ArretsConfig = {
+  ville: string | null;
+  arret: string;
+  limite: number;
+  /** Destination du bureau, quand la question ne la nomme pas. */
+  bureau?: string | null;
+};
 
 type Ligne = {
   ligne: string;
@@ -40,7 +46,19 @@ type Trajet = {
 
 type ArretsData =
   | { kind: 'stop'; arret: string; ville: string; lignes: Ligne[] }
-  | { kind: 'trajet'; depuis: string; vers: string; trajets: Trajet[] };
+  | { kind: 'trajet'; depuis: string; vers: string; trajets: Trajet[] }
+  /**
+   * Réponse à « à quelle heure pars-je pour être là à 9 h ? » : les trajets qui arrivent avant
+   * l'échéance, du plus tardif au plus tôt, et la marge sur l'heure demandée.
+   */
+  | {
+      kind: 'echeance';
+      depuis: string;
+      vers: string;
+      limite: string;
+      margeMin: number;
+      trajets: Trajet[];
+    };
 
 /** Ce qu'on retient d'un départ du flux, avant regroupement par ligne et direction. */
 type Depart = {
@@ -226,6 +244,42 @@ function durationMinutes(value: unknown): number {
   return Number(match[1] ?? 0) * 1440 + Number(match[2]) * 60 + Number(match[3]);
 }
 
+/** Jour civil du foyer, au format AAAA-MM-JJ : c'est la date que l'API attend. */
+function localDay(now: number, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
+/** Heure d'arrivée demandée à la voix, ou null quand la question n'en donne pas. */
+function arrivalOf(
+  args: Record<string, unknown> | undefined,
+): { heure: number; minute: number } | null {
+  const heure = Number(args?.heure);
+  if (!Number.isFinite(heure) || heure < 0 || heure > 23) return null;
+  const minutes = Number(args?.minute);
+  return {
+    heure: Math.round(heure),
+    minute: Number.isFinite(minutes) ? Math.min(59, Math.max(0, Math.round(minutes))) : 0,
+  };
+}
+
+/** Minutes depuis minuit d'un horodatage, dans le fuseau du foyer. */
+function minutesOf(iso: string, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? 0);
+  return hour * 60 + minute;
+}
+
 function fail(response: AddonHttpResponse): never {
   if (response.status === 429)
     throw new AddonCollectError('quota', 'transport.opendata.ch limite les requêtes.', true);
@@ -350,6 +404,17 @@ async function findStop(
   return locate(context, ville, query);
 }
 
+/** Arrêt cherché dans la ville configurée, puis partout en Suisse s'il n'y est pas. */
+async function findAnywhere(
+  context: CollectContext,
+  ville: string,
+  name: string,
+): Promise<Station | null> {
+  return (
+    (await findStop(context, ville, name)) ?? (ville ? await findStop(context, '', name) : null)
+  );
+}
+
 /** Arrêt le plus probable de la ville pour ce que dit la personne. */
 async function locate(
   context: CollectContext,
@@ -434,12 +499,24 @@ function bothEnds(query: string): { from: string; to: string } | null {
 }
 
 /** Itinéraires proposés entre deux arrêts, du plus proche au plus tardif. */
-async function journeysOf(context: CollectContext, from: Station, to: Station): Promise<Trajet[]> {
+async function journeysOf(
+  context: CollectContext,
+  from: Station,
+  to: Station,
+  arrivee?: { date: string; time: string },
+): Promise<Trajet[]> {
   const params = new URLSearchParams({
     from: from.id ?? from.name,
     to: to.id ?? to.name,
     limit: '3',
   });
+  // `isArrivalTime` renverse la question : au lieu des départs qui suivent l'heure, on demande
+  // les trajets qui arrivent avant elle. C'est ce que veut dire « être au bureau à 9 h ».
+  if (arrivee) {
+    params.set('date', arrivee.date);
+    params.set('time', arrivee.time);
+    params.set('isArrivalTime', '1');
+  }
   const response = await context.http.fetch({
     url: `${connectionsUrl}?${params.toString()}`,
     method: 'GET',
@@ -509,7 +586,7 @@ async function journeysOf(context: CollectContext, from: Station, to: Station): 
 const addon: AddonDefinition<ArretsConfig, ArretsData> = {
   id: 'arrets',
   apiVersion: 1,
-  version: '1.2.0',
+  version: '1.3.0',
   minCoreVersion: '0.2.0',
   sourceLabel: 'transport.opendata.ch',
   display: {
@@ -522,14 +599,15 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
     example: { label: 'Arrêts de Lausanne', ref: 'lausanne' },
     spoken: { head: 'les arrêts', repeats: ['arrets', 'arret'] },
   },
-  configVersion: 1,
+  configVersion: 2,
   configSchema,
   configDefaults: {
     ville: 'Lausanne',
     arret: 'Lausanne, Chailly-Village',
+    bureau: 'Lausanne, gare',
     limite: 6,
   },
-  dataVersion: 3,
+  dataVersion: 4,
   dataSchema,
   freshMs: 45_000,
   tools: [
@@ -584,6 +662,47 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
       },
       query: { maxLength: 120 },
     },
+    {
+      name: 'partir',
+      description:
+        'Dire à quelle heure partir pour arriver à une heure précise, où que ce soit en Suisse : ' +
+        'dernier départ utile, heure d’arrivée et marge sur l’échéance. Utiliser pour « à quelle ' +
+        'heure je pars pour être au bureau à 9 h ? », « je dois être à Genève à 10 h 15 ». Ne ' +
+        'jamais appeler cet outil sans l’heure d’arrivée : si la personne n’en donne pas, lui ' +
+        'demander d’abord « Vous voulez arriver à une heure précise ? » et attendre sa réponse. ' +
+        'Si la personne répond qu’elle n’a pas d’heure, ne pas insister : appeler l’outil ' +
+        'trajet, qui donne les prochains départs. ' +
+        'Pour le travail, passer « bureau » comme query : la source le traduit en arrêt réel. ' +
+        'query : la destination seule (« Ouchy », « Genève »), ou les deux bouts séparés par ' +
+        '« > » (« Bel-Air > gare ») ; sans origine, le départ est l’arrêt habituel. L’heure ' +
+        'passe dans les arguments heure et minute, jamais dans la query.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['instanceRef', 'query'],
+        properties: {
+          instanceRef: { type: ['string', 'null'] },
+          query: { type: 'string' },
+          heure: { type: 'integer' },
+          minute: { type: 'integer' },
+        },
+      },
+      query: { maxLength: 120 },
+      arguments: {
+        heure: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 23,
+          description: 'Heure d’arrivée souhaitée, de 0 à 23.',
+        },
+        minute: {
+          type: 'integer',
+          minimum: 0,
+          maximum: 59,
+          description: 'Minutes de l’heure d’arrivée, de 0 à 59.',
+        },
+      },
+    },
   ],
   async collect(context) {
     // Ville vide : la recherche porte sur toute la Suisse, sans préfixe.
@@ -611,25 +730,88 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
     if (!query)
       throw new AddonCollectError('invalid_params', 'Précisez un arrêt ou un trajet.', false);
 
+    const arrivee = arrivalOf(context.args);
+    if (arrivee) {
+      // Une échéance vaut pour n'importe quel trajet de Suisse : « gare > Genève à 10 h » comme
+      // la destination seule, qui part alors de l'arrêt habituel.
+      const ends = bothEnds(query);
+      const fromHome = ends ? ['ici', 'moi', 'maison', 'domicile'].includes(fold(ends.from)) : true;
+      // « bureau », « travail » ou « boulot » renvoient au réglage facultatif : on n'épelle pas
+      // l'adresse de son travail à chaque question.
+      const said = text(ends ? ends.to : query, 80);
+      const bureau = text(context.config.bureau, 80);
+      const destination =
+        ['bureau', 'travail', 'boulot'].includes(fold(said)) && bureau ? bureau : said || bureau;
+      if (!destination)
+        throw new AddonCollectError(
+          'config_invalid',
+          'Indiquez la destination, ou renseignez le bureau dans la configuration.',
+          false,
+        );
+      const from: Station | null = fromHome
+        ? { id: null, name: habitual }
+        : await findAnywhere(context, ville, ends?.from ?? '');
+      if (!from)
+        throw new AddonCollectError(
+          'not_found',
+          `Aucun arrêt « ${ends?.from ?? ''} » trouvé ${ou}.`,
+          false,
+        );
+      const to = await findAnywhere(context, ville, destination);
+      if (!to)
+        throw new AddonCollectError(
+          'not_found',
+          `Aucun arrêt « ${destination} » trouvé ${ou}.`,
+          false,
+        );
+      const heure = String(arrivee.heure).padStart(2, '0');
+      const minute = String(arrivee.minute).padStart(2, '0');
+      const limite = `${heure}:${minute}`;
+      const trajets = await journeysOf(context, from, to, {
+        date: localDay(now, context.timeZone),
+        time: limite,
+      });
+      const limiteMin = arrivee.heure * 60 + arrivee.minute;
+      // Du plus tardif au plus tôt : le premier est le dernier départ qui tient dans l'échéance.
+      const utiles = trajets
+        .filter((trajet) => minutesOf(trajet.arrive, context.timeZone) <= limiteMin)
+        .sort((a, b) => (a.depart < b.depart ? 1 : a.depart > b.depart ? -1 : 0));
+      const meilleur = utiles[0];
+      if (!meilleur)
+        throw new AddonCollectError(
+          'not_found',
+          `Aucun trajet n’arrive avant ${limite} à ${to.name}.`,
+          false,
+        );
+      return {
+        data: {
+          kind: 'echeance',
+          depuis: from.name,
+          vers: to.name,
+          limite,
+          margeMin: Math.max(0, limiteMin - minutesOf(meilleur.arrive, context.timeZone)),
+          trajets: utiles.slice(0, 3),
+        },
+        source: { provider: 'opendata-ch', sourceId: `${from.name} > ${to.name}`.slice(0, 128) },
+      };
+    }
+
     const ends = bothEnds(query);
     if (ends) {
       // « ici > Ouchy » : la personne part de l'arrêt habituel sans avoir à le nommer.
       const fromHome = ['ici', 'moi', 'maison', 'domicile'].includes(fold(ends.from));
       // Un bout hors de la ville de la source reste cherchable : « gare > Renens » depuis
       // Lausanne doit trouver Renens, qui n'est pas dans Lausanne.
-      const anywhere = async (name: string) =>
-        (await findStop(context, ville, name)) ??
-        (ville ? await findStop(context, '', name) : null);
       const from: Station | null = fromHome
         ? { id: null, name: habitual }
-        : await anywhere(ends.from);
+        : await findAnywhere(context, ville, ends.from);
       if (!from)
         throw new AddonCollectError(
           'not_found',
           `Aucun arrêt « ${ends.from} » trouvé ${ou}.`,
           false,
         );
-      const to = await anywhere(ends.to);
+      const to = await findAnywhere(context, ville, ends.to);
       if (!to)
         throw new AddonCollectError('not_found', `Aucun arrêt « ${ends.to} » trouvé ${ou}.`, false);
       const trajets = await journeysOf(context, from, to);
@@ -741,6 +923,48 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
             premier.depart,
             context.timeZone,
           )}, arrivée à ${clock(premier.arrive, context.timeZone)}, ${premier.dureeMin} minutes${correspondances}.${ou}${lignes}`,
+          500,
+        ),
+        sources: ['transport.opendata.ch'],
+      };
+    }
+
+    if (data.kind === 'echeance') {
+      const premier = data.trajets[0];
+      if (!premier) throw new Error('Aucun départ à présenter.');
+      // La carte met l'heure de départ en grand : c'est la seule chose qu'on retient d'un coup
+      // d'œil le matin. Les autres propositions restent lisibles en une ligne chacune.
+      const items = data.trajets.slice(0, 3).map((trajet) => ({
+        label: `${clock(trajet.depart, context.timeZone)} → ${clock(trajet.arrive, context.timeZone)}`,
+        value: [
+          `${trajet.dureeMin} min`,
+          trajet.correspondances === 0
+            ? 'direct'
+            : `${trajet.correspondances} correspondance${trajet.correspondances > 1 ? 's' : ''}`,
+          trajet.lignes.join(', '),
+        ]
+          .filter(Boolean)
+          .join(' · ')
+          .slice(0, 160),
+      }));
+      const correspondances =
+        premier.correspondances === 0
+          ? 'sans correspondance'
+          : `avec ${premier.correspondances} correspondance${premier.correspondances > 1 ? 's' : ''}`;
+      const marge =
+        data.margeMin > 0
+          ? `${data.margeMin} minute${data.margeMin > 1 ? 's' : ''} d’avance sur l’échéance de ${data.limite}`
+          : `pile à l’heure sur l’échéance de ${data.limite}`;
+      return {
+        title: 'Départ',
+        primaryValue: clock(premier.depart, context.timeZone),
+        subtitle: `${data.depuis} → ${data.vers}`.slice(0, 120),
+        description: stale ? 'Dernier relevé connu, à vérifier.' : null,
+        items,
+        summary: firstSentence(
+          `Pars à ${clock(premier.depart, context.timeZone)} de ${data.depuis} pour arriver à ${
+            data.vers
+          } à ${clock(premier.arrive, context.timeZone)} : ${premier.dureeMin} minutes ${correspondances}, ${marge}.`,
           500,
         ),
         sources: ['transport.opendata.ch'],

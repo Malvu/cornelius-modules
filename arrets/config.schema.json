@@ -20,6 +20,13 @@
       "pattern": "^\\S",
       "examples": ["Lausanne, Chailly-Village"]
     },
+    "bureau": {
+      "title": "Destination par défaut (facultatif)",
+      "description": "Sert uniquement quand la question ne nomme pas la destination. Dans tous les autres cas, la destination est demandée à chaque fois. Laisser vide pour la demander toujours.",
+      "type": ["string", "null"],
+      "maxLength": 80,
+      "examples": ["Lausanne, gare"]
+    },
     "limite": {
       "title": "Lignes affichées",
       "description": "Nombre de lignes et directions sur la carte. Chacune n'apparaît qu'une fois, avec son prochain départ.",
