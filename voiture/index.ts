@@ -1,7 +1,7 @@
 /**
- * Trajets en voiture, avec le trafic du moment. Une seule source : Google Routes, qui demande
- * une clé et un compte de facturation. À côté des modules de transports publics, il répond à la
- * question qu'on se pose quand on prend la voiture : combien de temps, et combien de kilomètres.
+ * Trajets en voiture, entièrement gratuits : OpenStreetMap pour retrouver les adresses, OSRM pour
+ * calculer la route. Aucune clé, aucun compte, rien à payer. La durée ne tient pas compte du
+ * trafic, d'où le second module pour qui y tient.
  */
 import { AddonCollectError, type AddonDefinition, type AddonHttpResponse } from '#cornelius/addons';
 import { compile } from '#cornelius/validation';
@@ -10,64 +10,53 @@ import dataSchema from './data.schema.json' with { type: 'json' };
 
 type VoitureConfig = { origine: string | null; destination: string | null };
 
-/** Un trajet routier : la durée, la distance, et ce que le trafic ajoute. */
+/** Un trajet routier : la durée et la distance, sans trafic. */
 type VoitureData = {
   kind: 'trajet';
   depuis: string;
   vers: string;
   dureeMin: number;
   distanceKm: number;
-  /** Minutes ajoutées par le trafic, quand Google les donne. */
-  traficMin: number | null;
 };
 
-const routesUrl = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+const searchUrl = 'https://nominatim.openstreetmap.org/search';
+const routeUrl = 'https://router.project-osrm.org/route/v1/driving';
 
-/**
- * Routes API : la remplaçante de Directions API, seule proposée aux nouveaux projets Google.
- * Les durées arrivent en secondes suivies d'un « s » (« 2880s »), et la durée statique permet
- * d'isoler ce que le trafic ajoute.
- */
-type RoutesPayload = {
-  routes?: {
-    duration?: unknown;
-    staticDuration?: unknown;
-    distanceMeters?: unknown;
-  }[];
-  error?: { message?: unknown; status?: unknown };
+type SearchPayload = { lat?: unknown; lon?: unknown; display_name?: unknown }[];
+
+const validateSearch = compile<SearchPayload>({
+  type: 'array',
+  items: {
+    type: 'object',
+    properties: {
+      lat: { type: 'string' },
+      lon: { type: 'string' },
+      display_name: { type: 'string' },
+    },
+  },
+});
+
+type RoutePayload = {
+  code?: unknown;
+  routes?: { duration?: unknown; distance?: unknown }[];
 };
 
-const validateRoutes = compile<RoutesPayload>({
+const validateRoute = compile<RoutePayload>({
   type: 'object',
   properties: {
+    code: { type: 'string' },
     routes: {
       type: 'array',
       items: {
         type: 'object',
         properties: {
-          duration: { type: 'string' },
-          staticDuration: { type: 'string' },
-          distanceMeters: { type: 'number' },
+          duration: { type: 'number' },
+          distance: { type: 'number' },
         },
-      },
-    },
-    error: {
-      type: 'object',
-      properties: {
-        message: { type: 'string' },
-        status: { type: 'string' },
       },
     },
   },
 });
-
-/** « 2880s » donne 2880 secondes. */
-function seconds(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value !== 'string') return Number.NaN;
-  const match = /^(\d+(?:\.\d+)?)s$/u.exec(value.trim());
-  return match ? Number(match[1]) : Number.NaN;
-}
 
 function text(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -82,26 +71,39 @@ function fold(value: string): string {
     .trim();
 }
 
-/** Les deux bouts d'un trajet : « Genève » seul, « de Genève à Zurich », « Chailly > gare ». */
+/**
+ * Libellé lisible d'un résultat Nominatim : « Genève », « Chailly, Montblesson ». Le pays arrive
+ * en quatre langues (« Schweiz/Suisse/Svizzera/Svizra ») et le district n'apprend rien.
+ */
+function shortLabel(raw: string, fallback: string): string {
+  const partes = raw
+    .split(',')
+    .map((part) => part.trim())
+    .filter(
+      (part) =>
+        part.length > 0 &&
+        !/schweiz|suisse|svizzera|svizra|switzerland|france|italia|österreich|austria|deutschland/iu.test(
+          part,
+        ),
+    );
+  return (partes.slice(0, 2).join(', ') || fallback).slice(0, 120);
+}
+
+/** Les deux bouts : « Genève » seul, « de Genève à Zurich », « Chailly > gare ». */
 function bothEnds(query: string): { from: string; to: string } | null {
   const match = /^(.*?)\s*(?:>|→|->|\svers\s|\sà\s|\sjusqu'à\s)\s*(.+)$/iu.exec(query.trim());
   if (!match) return null;
-  // « de Genève à Zurich » : la préposition reste sur le premier bout, on l'enlève.
   const from = text(match[1], 120).replace(/^(?:de|depuis|d')\s+/iu, '');
   const to = text(match[2], 120);
   return from && to ? { from, to } : null;
 }
 
-function minutes(seconds: number): number {
-  return Math.max(1, Math.round(seconds / 60));
-}
-
-function fail(response: AddonHttpResponse): never {
+function fail(response: AddonHttpResponse, qui: string): never {
   if (response.status === 429)
-    throw new AddonCollectError('quota', 'Google limite les requêtes.', true);
+    throw new AddonCollectError('quota', `${qui} limite les requêtes.`, true);
   if (response.status >= 500)
-    throw new AddonCollectError('unavailable', 'Google a rencontré une erreur.', true);
-  throw new AddonCollectError('upstream', `Google a répondu ${response.status}.`, false);
+    throw new AddonCollectError('unavailable', `${qui} a rencontré une erreur.`, true);
+  throw new AddonCollectError('upstream', `${qui} a répondu ${response.status}.`, false);
 }
 
 const addon: AddonDefinition<VoitureConfig, VoitureData> = {
@@ -109,41 +111,33 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
   apiVersion: 1,
   version: '1.0.0',
   minCoreVersion: '0.2.0',
-  sourceLabel: 'Google Routes',
+  sourceLabel: 'OpenStreetMap et OSRM',
   display: {
-    name: 'Trajets en voiture',
-    description: 'La durée et la distance en voiture, trafic compris, par Google Routes.',
+    name: 'Trajets en voiture (gratuit)',
+    description: 'La durée et la distance en voiture, sans clé ni compte, par OpenStreetMap.',
     icon: 'car',
     group: 'daily',
-    keywords: ['voiture', 'trajet', 'trafic', 'routes', 'distance', 'conduire', 'bouchons'],
+    keywords: ['voiture', 'trajet', 'routes', 'distance', 'conduire', 'gratuit'],
     example: { label: 'Trajet en voiture', ref: 'voiture' },
-    spoken: { head: 'les trajets en voiture', repeats: ['voiture', 'trafic', 'bouchons'] },
+    spoken: { head: 'les trajets en voiture', repeats: ['voiture', 'trajet'] },
   },
   configVersion: 1,
   configSchema,
   configDefaults: { origine: null, destination: null },
   dataSchema,
   dataVersion: 1,
-  // Le trafic change vite, mais la question se pose une ou deux fois : deux minutes suffisent.
-  freshMs: 2 * 60_000,
-  secrets: [
-    {
-      name: 'googleKey',
-      env: 'CORNELIUS_GOOGLE_MAPS_KEY',
-      label: 'une clé Google Maps Platform',
-    },
-  ],
+  freshMs: 5 * 60_000,
   tools: [
     {
       name: 'trajet',
       description:
-        'Calculer un trajet en voiture, avec la durée, la distance et ce que le trafic ajoute. ' +
-        'Utiliser pour « combien de temps en voiture ? », « c’est long d’aller à Genève en ' +
-        'voiture ? », « je vais au bureau, combien de temps ? ». N’importe quel trajet de Suisse ' +
-        'est accepté. query : la destination seule (« Genève ») quand le départ est réglé, ou ' +
-        'les deux bouts (« Chailly, Lausanne > Genève », « de Genève à Zurich »). Pour le ' +
-        'travail, passer « bureau » ; pour le réglage de départ, « domicile ». Ne jamais inventer ' +
-        'une durée ni une distance : si Google ne trouve pas de trajet, le dire.',
+        'Calculer un trajet en voiture, avec la durée et la distance, sans tenir compte du ' +
+        'trafic. Utiliser pour « combien de temps en voiture ? », « c’est loin d’aller à ' +
+        'Genève ? ». N’importe quel trajet de Suisse est accepté. query : la destination seule ' +
+        '(« Genève ») quand le départ est réglé, ou les deux bouts (« de Genève à Zurich », ' +
+        '« Chailly, Lausanne > Sion »). Pour le travail, passer « bureau » ; pour le départ ' +
+        'réglé, « domicile ». Ne jamais inventer une durée : si aucune route n’est trouvée, le ' +
+        'dire.',
       parameters: {
         type: 'object',
         additionalProperties: false,
@@ -157,134 +151,126 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
     },
   ],
   async collect(context) {
-    const key = context.secret('googleKey');
-    if (!key)
-      throw new AddonCollectError(
-        'config_invalid',
-        'Clé Google Maps absente : ajoutez CORNELIUS_GOOGLE_MAPS_KEY dans le fichier .env.',
-        false,
-      );
     const config = context.config;
     const query = (context.query ?? '').trim();
     if (!query) throw new AddonCollectError('invalid_params', 'Précisez une destination.', false);
     const ends = bothEnds(query);
-    // « bureau » ou « domicile » renvoient aux réglages, pour ne pas épeler une adresse.
-    const named = (value: string, fallback: string | null): string => {
+    // « bureau » et « domicile » renvoient aux réglages, pour ne pas épeler une adresse.
+    const named = (value: string): string => {
       const mot = fold(value);
       if (['bureau', 'travail', 'boulot'].includes(mot))
         return text(config.destination, 120) || value;
       if (['domicile', 'maison', 'ici'].includes(mot)) return text(config.origine, 120) || value;
-      return text(fallback, 120) || value;
+      return value;
     };
-    const origin = named(ends ? ends.from : text(config.origine, 120), config.origine);
-    const destination = named(ends ? ends.to : query, null);
-    if (!origin)
+    const from = named(ends ? ends.from : text(config.origine, 120));
+    const to = named(ends ? ends.to : query);
+    if (!from)
       throw new AddonCollectError(
         'config_invalid',
-        'Indiquez le départ : « de Genève à Zurich », « Chailly, Lausanne > Genève », ou réglez le point de départ de la source.',
+        'Indiquez le départ : « de Genève à Zurich », ou réglez le point de départ de la source.',
         false,
       );
+    const locate = async (address: string) => {
+      const params = new URLSearchParams({
+        q: address,
+        format: 'jsonv2',
+        // Cinq résultats, pas un : « Chailly, Lausanne » en a plusieurs, et le premier n'est pas
+        // toujours celui qu'on veut. On garde celui qui reprend le plus de mots demandés.
+        limit: '5',
+        countrycodes: 'ch,fr,it,de,at',
+      });
+      const response = await context.http.fetch({
+        url: `${searchUrl}?${params.toString()}`,
+        method: 'GET',
+        // La politique de Nominatim demande un agent identifiable et une cadence douce.
+        headers: { 'User-Agent': 'Cornelius/1.0 (miroir familial)' },
+        signal: context.signal,
+        timeoutMs: 8000,
+        maxBytes: 128 * 1024,
+        cacheMs: 10 * 60_000,
+      });
+      if (response.status !== 200) fail(response, 'OpenStreetMap');
+      let payload: unknown;
+      try {
+        payload = response.json();
+      } catch {
+        throw new AddonCollectError('malformed', 'Réponse d’OpenStreetMap illisible.', false);
+      }
+      if (!validateSearch(payload) || payload.length === 0) return null;
+      const mots = fold(address)
+        .split(' ')
+        .filter((mot) => mot.length > 2);
+      const scores = payload.map((entry) => {
+        const libelle = fold(text(entry.display_name, 200));
+        return { entry, score: mots.filter((mot) => libelle.includes(mot)).length };
+      });
+      scores.sort((a, b) => b.score - a.score);
+      const first = scores[0]?.entry;
+      if (!first) return null;
+      const lat = Number(first.lat);
+      const lon = Number(first.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+      return { lat, lon, label: shortLabel(text(first.display_name, 200), address) };
+    };
+    const depart = await locate(from);
+    if (!depart)
+      throw new AddonCollectError('not_found', `Aucun lieu trouvé pour « ${from} ».`, false);
+    const arrivee = await locate(to);
+    if (!arrivee)
+      throw new AddonCollectError('not_found', `Aucun lieu trouvé pour « ${to} ».`, false);
+    const coords = `${depart.lon},${depart.lat};${arrivee.lon},${arrivee.lat}`;
     const response = await context.http.fetch({
-      url: routesUrl,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Le masque de champs limite la réponse à ce qui est utile, et allège la facture.
-        'X-Goog-FieldMask': 'routes.duration,routes.staticDuration,routes.distanceMeters',
-        'X-Goog-Api-Key': key,
-      },
-      body: JSON.stringify({
-        origin: { address: origin },
-        destination: { address: destination },
-        travelMode: 'DRIVE',
-        routingPreference: 'TRAFFIC_AWARE',
-        languageCode: 'fr',
-        regionCode: 'CH',
-        units: 'METRIC',
-      }),
+      url: `${routeUrl}/${coords}?overview=false&alternatives=false&steps=false`,
+      method: 'GET',
       signal: context.signal,
       timeoutMs: 10_000,
-      maxBytes: 256 * 1024,
-      cacheMs: 2 * 60_000,
+      maxBytes: 128 * 1024,
+      cacheMs: 5 * 60_000,
     });
-    if (response.status !== 200) fail(response);
-    let payload: RoutesPayload;
+    if (response.status !== 200) fail(response, 'OSRM');
+    let payload: RoutePayload;
     try {
-      payload = response.json() as RoutesPayload;
+      payload = response.json() as RoutePayload;
     } catch {
-      throw new AddonCollectError('malformed', 'Réponse de Google illisible.', false);
+      throw new AddonCollectError('malformed', 'Réponse d’OSRM illisible.', false);
     }
-    if (!validateRoutes(payload))
-      throw new AddonCollectError('malformed', 'Réponse de Google incomprise.', false);
-    if (payload.error) {
-      const raison = text(payload.error.message, 120) || text(payload.error.status, 40);
+    if (!validateRoute(payload))
+      throw new AddonCollectError('malformed', 'Réponse d’OSRM incomprise.', false);
+    const route = payload.routes?.[0];
+    const duree = Number(route?.duration);
+    const distance = Number(route?.distance);
+    if (payload.code !== 'Ok' || !Number.isFinite(duree) || !Number.isFinite(distance))
       throw new AddonCollectError(
         'not_found',
-        `Google ne trouve pas ce trajet : ${raison}.`,
+        `Aucune route entre ${depart.label} et ${arrivee.label}.`,
         false,
       );
-    }
-    const route = payload.routes?.[0];
-    const base = seconds(route?.staticDuration);
-    const avecTrafic = seconds(route?.duration);
-    const distance = Number(route?.distanceMeters);
-    if (!Number.isFinite(avecTrafic) || !Number.isFinite(distance))
-      throw new AddonCollectError('malformed', 'Google n’a pas donné de durée.', false);
-    // Le trafic fait partie de la réponse : c'est la durée annoncée, pas un supplément à ajouter.
-    const traficMin = Number.isFinite(base)
-      ? Math.min(1440, Math.max(0, Math.round((avecTrafic - base) / 60)))
-      : null;
     return {
       data: {
         kind: 'trajet' as const,
-        depuis: origin.slice(0, 120),
-        vers: destination.slice(0, 120),
-        dureeMin: Math.min(1440, minutes(avecTrafic)),
+        depuis: depart.label.slice(0, 120),
+        vers: arrivee.label.slice(0, 120),
+        dureeMin: Math.min(1440, Math.max(1, Math.round(duree / 60))),
         distanceKm: Math.round(distance / 100) / 10,
-        traficMin,
       },
-      source: {
-        provider: 'google-routes',
-        sourceId: `${origin} > ${destination}`.slice(0, 128),
-      },
+      source: { provider: 'osrm', sourceId: `${depart.label} > ${arrivee.label}`.slice(0, 128) },
     };
   },
   present(snapshot) {
     const data = snapshot.data;
     if (!data) throw new Error('Aucun trajet à présenter.');
     const stale = snapshot.status === 'stale';
-    const items = [
-      { label: 'Distance', value: `${data.distanceKm.toFixed(1).replace('.', ',')} km` },
-    ];
-    if (data.traficMin !== null && data.traficMin > 0)
-      items.push({ label: 'Trafic', value: `+${data.traficMin} min` });
-    const trafic =
-      data.traficMin !== null && data.traficMin > 0
-        ? `, dont ${data.traficMin} minutes de trafic`
-        : '';
     return {
       title: 'En voiture',
       primaryValue: `${data.dureeMin} min`,
       subtitle: `${data.depuis} → ${data.vers}`.slice(0, 120),
       description: stale ? 'Dernier relevé connu, à vérifier.' : null,
-      items,
-      summary: firstSentence(
-        `En voiture de ${data.depuis} à ${data.vers} : ${data.dureeMin} minutes pour ${data.distanceKm.toFixed(1).replace('.', ',')} kilomètres${trafic}.`,
-        500,
-      ),
-      sources: ['Google Routes'],
+      items: [{ label: 'Distance', value: `${data.distanceKm.toFixed(1).replace('.', ',')} km` }],
+      summary: `En voiture de ${data.depuis} à ${data.vers} : ${data.dureeMin} minutes pour ${data.distanceKm.toFixed(1).replace('.', ',')} kilomètres, hors trafic.`,
+      sources: ['OpenStreetMap', 'OSRM'],
     };
   },
 };
-
-/** Coupe à la première phrase : une carte de miroir se lit d'un coup d'œil. */
-function firstSentence(value: string, max: number): string {
-  if (value.length <= max) return value;
-  const cut = value.slice(0, max);
-  const period = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
-  if (period >= max * 0.4) return cut.slice(0, period + 1);
-  const space = cut.lastIndexOf(' ');
-  return `${(space > max * 0.5 ? cut.slice(0, space) : cut).trimEnd()}…`;
-}
 
 export default addon;

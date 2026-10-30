@@ -4,11 +4,14 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 ## Non publié
 
-### 2026-10-30 : module Trajets en voiture
+### 2026-10-30 : modules Trajets en voiture
 
 **Ajouté**
 
-- Module **Trajets en voiture** (`voiture`, 1.0.0), par [Malvu](https://github.com/Malvu) : la durée, la distance et le trafic d'un trajet routier, pour la question que les transports publics ne couvrent pas. Les mots « domicile » et « bureau » renvoient aux deux réglages de la source. Jeton à déclarer (`CORNELIUS_GOOGLE_MAPS_KEY`) et facturation Google activée. Source : Google Routes (Routes API).
+- Module **Trajets en voiture (gratuit)** (`voiture`, 1.0.0), par [Malvu](https://github.com/Malvu) : la durée et la distance d'un trajet routier, **sans clé, sans compte et sans rien payer**. Adresses par Nominatim, itinéraires par OSRM — les deux services publics d'OpenStreetMap. N'importe quel trajet de Suisse ; « domicile » et « bureau » renvoient aux réglages. Durées hors trafic.
+- Module **Trajets en voiture (trafic)** (`voiture_google`, 1.0.0), par [Malvu](https://github.com/Malvu) : le même trajet, avec le trafic du moment, par Google Routes. Demande une clé (`CORNELIUS_GOOGLE_MAPS_KEY`) et un compte de facturation Google ; le volume gratuit mensuel couvre un usage familial.
+
+Les deux cohabitent : on installe celui qui convient, ou les deux.
 
 ### 2026-10-30 : heure de départ dans Arrêts et itinéraires
 

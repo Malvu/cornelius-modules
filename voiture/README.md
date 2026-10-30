@@ -1,51 +1,39 @@
-# Module Trajets en voiture
+# Module Trajets en voiture (gratuit)
 
-Le module Trajets en voiture donne la durée et la distance d'un trajet routier, trafic du moment compris. Cette fiche s'adresse à la personne qui règle le miroir et à celle qui lit le code du module (identifiant `voiture`).
+Le module Trajets en voiture donne la durée et la distance d'un trajet routier, **sans clé, sans compte et sans rien payer**. Cette fiche s'adresse à la personne qui règle le miroir et à celle qui lit le code du module (identifiant `voiture`).
 
 ## Ce que fait le module
 
-- Il répond à « combien de temps en voiture pour Genève ? » et affiche une carte « En voiture » : la durée en grand, la distance, et les minutes ajoutées par le trafic quand Google les donne.
-- Il répond à « domicile > bureau » et accepte les deux bouts dans la question. Le mot « domicile » renvoie au réglage d'origine, le mot « bureau » au réglage de destination.
-- La durée affichée est celle du trafic réel, pas une durée théorique : si Google annonce 48 minutes dont 8 de bouchons, la carte montre 48.
-- Quand Google ne trouve pas de trajet, le module le dit avec le motif au lieu d'inventer.
+- Il répond à « combien de temps en voiture pour Genève ? » et affiche une carte « En voiture » : la durée en grand et la distance.
+- Il accepte n'importe quel trajet : « de Genève à Zurich », « Chailly, Lausanne > Sion », « Lausanne vers Sion ». Le mot « domicile » renvoie au départ réglé, « bureau » à la destination réglée.
+- L'adresse est retrouvée par **Nominatim** (OpenStreetMap), la route est calculée par **OSRM**, le calculateur d'itinéraires d'OpenStreetMap.
+- Quand un lieu est introuvable, le module le dit au lieu d'inventer une durée.
+
+## Ce qu'il ne fait pas
+
+- **Pas de trafic.** La durée est celle d'une route libre. Pour le trafic en temps réel, voir le module **Trajets en voiture (trafic)**, qui demande une clé Google.
+- **Pas d'heure d'arrivée.** Le module répond « maintenant ».
 
 ## Réglages d'une source
 
-Dans **Modules → Trajets en voiture → Ajouter une source** :
+Dans **Modules → Trajets en voiture (gratuit) → Ajouter une source** :
 
 | Réglage | Effet | Par défaut |
 | --- | --- | --- |
-| Point de départ (facultatif) | L'adresse d'où partent les trajets quand la question ne le dit pas ; le mot « domicile » y renvoie. Vide, la question doit nommer les deux bouts | vide |
+| Point de départ (facultatif) | L'adresse d'où partent les trajets quand la question ne le dit pas ; le mot « domicile » y renvoie | vide |
 | Destination par défaut (facultatif) | L'adresse que désigne le mot « bureau » | vide |
 
-N'importe quel trajet de Suisse est accepté : « Chailly, Lausanne > Genève », « de Genève à Zurich », « Lausanne vers Sion ». Le réglage de départ n'est qu'un raccourci.
-
-## La clé Google
-
-Le module utilise **Routes API** de Google Maps Platform, la remplaçante de Directions API, seule proposée aux nouveaux projets. Il faut :
-
-1. un projet Google Cloud avec la **facturation activée** ;
-2. l'API **Routes** activée dans ce projet ;
-3. une clé d'API restreinte à cette seule API.
-
-La clé se déclare dans le fichier `.env` de Cornelius :
-
-```
-CORNELIUS_GOOGLE_MAPS_KEY=la-cle
-```
-
-Sans elle, le module refuse de calculer et le dit. Google offre un volume mensuel gratuit ; au-delà, chaque trajet est facturé quelques millièmes de franc.
+Les deux sont facultatifs : sans eux, il suffit de nommer les deux bouts dans la question.
 
 ## Limites
 
-- **Pas d'heure d'arrivée.** Le module répond « maintenant » : l'API sait aussi calculer pour une heure future, mais la prévision de trafic n'est alors plus fournie, et le module ne l'expose pas encore.
-- **Les adresses partent chez Google.** C'est le seul module du dépôt qui envoie vos trajets à un tiers. La clé peut être restreinte, mais pas l'usage.
-- Le trafic n'est pas garanti : Google l'estime à partir de ses propres données, et une fermeture de route récente peut ne pas y figurer.
-- En cas de refus de Google (quota, clé invalide, trajet introuvable), le module dit lequel.
+- **Services publics gratuits.** Nominatim et OSRM sont des serveurs de démonstration communautaires. Ils peuvent être lents ou indisponibles un jour, et Nominatim demande une requête par seconde au plus : le module interroge deux adresses puis s'arrête, avec dix minutes de cache.
+- **Adresses approximatives.** Une adresse mal orthographiée peut donner un autre lieu ; la carte affiche le libellé réellement trouvé, ce qui permet de le voir.
+- **Durées hors trafic.** OSRM estime une route libre : à 8 h du matin, la réalité sera plus longue.
 
 ## Outil vocal
 
-L'outil s'appelle `voiture__trajet` et attend une destination seule (« Genève ») ou les deux bouts séparés par `>` (« domicile > Genève »).
+L'outil s'appelle `voiture__trajet` et attend une destination seule (« Genève ») ou les deux bouts (« de Genève à Zurich »).
 
 Ce module ne propose pas d'affichage permanent.
 
