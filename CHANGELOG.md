@@ -4,6 +4,12 @@ Cette page retrace les modules ajoutés et modifiés, du plus récent au plus an
 
 ## Non publié
 
+### 2026-10-30 : module Trajets en voiture
+
+**Ajouté**
+
+- Module **Trajets en voiture** (`voiture`, 1.0.0), par [Malvu](https://github.com/Malvu) : la durée, la distance et le trafic d'un trajet routier, pour la question que les transports publics ne couvrent pas. Les mots « domicile » et « bureau » renvoient aux deux réglages de la source. Jeton à déclarer (`CORNELIUS_GOOGLE_MAPS_KEY`) et facturation Google activée. Source : Google Routes (Routes API).
+
 ### 2026-10-30 : heure de départ dans Arrêts et itinéraires
 
 **Modifié**
