@@ -1,13 +1,27 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "additionalProperties": false,
-  "required": ["kind", "depuis", "vers", "dureeMin", "distanceKm"],
-  "properties": {
-    "kind": { "const": "trajet" },
-    "depuis": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "vers": { "type": "string", "minLength": 1, "maxLength": 120 },
-    "dureeMin": { "type": "integer", "minimum": 1, "maximum": 1440 },
-    "distanceKm": { "type": "number", "minimum": 0, "maximum": 2000 }
-  }
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "depuis", "vers", "dureeMin", "distanceKm"],
+      "properties": {
+        "kind": { "const": "trajet" },
+        "depuis": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "vers": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "dureeMin": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "distanceKm": { "type": "number", "minimum": 0, "maximum": 2000 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "const": "attente" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  ]
 }

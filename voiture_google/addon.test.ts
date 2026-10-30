@@ -27,6 +27,16 @@ test('définition conforme et outil annoncé', (t) => {
   );
 });
 
+test('sans question, le module attend un trajet au lieu d’échouer', async (t) => {
+  const f = setup(t);
+  // C'est ce que fait l'administration en testant une source neuve : pas de question, pas d'erreur.
+  const result = await f.read();
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.card.primaryValue, 'Où ?');
+  assert.match(result.presentation.summary, /Dites deux lieux/u);
+});
+
 test('un trajet donne la durée, la distance et le trafic', async (t) => {
   const f = setup(t);
   const invoked = await f.invoke('trajet', { query: 'Genève' });

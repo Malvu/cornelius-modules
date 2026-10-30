@@ -11,13 +11,20 @@ import dataSchema from './data.schema.json' with { type: 'json' };
 type VoitureConfig = { origine: string | null; destination: string | null };
 
 /** Un trajet routier : la durée et la distance, sans trafic. */
-type VoitureData = {
-  kind: 'trajet';
-  depuis: string;
-  vers: string;
-  dureeMin: number;
-  distanceKm: number;
-};
+/**
+ * Un trajet routier (durée, distance), ou l'attente d'une question : sans destination, le module
+ * ne peut rien calculer, et le dit plutôt que d'échouer — l'administration teste toute source
+ * neuve sans lui poser de question.
+ */
+type VoitureData =
+  | {
+      kind: 'trajet';
+      depuis: string;
+      vers: string;
+      dureeMin: number;
+      distanceKm: number;
+    }
+  | { kind: 'attente'; message: string };
 
 const searchUrl = 'https://nominatim.openstreetmap.org/search';
 const routeUrl = 'https://router.project-osrm.org/route/v1/driving';
@@ -153,7 +160,15 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
   async collect(context) {
     const config = context.config;
     const query = (context.query ?? '').trim();
-    if (!query) throw new AddonCollectError('invalid_params', 'Précisez une destination.', false);
+    // Une source neuve est lue sans question : on répond qu'on attend un trajet, sans erreur.
+    if (!query)
+      return {
+        data: {
+          kind: 'attente' as const,
+          message: 'Dites deux lieux : « de Chailly à Sion », ou remplissez le départ de la source.',
+        },
+        empty: true,
+      };
     const ends = bothEnds(query);
     // « bureau » et « domicile » renvoient aux réglages, pour ne pas épeler une adresse. Sans
     // réglage, le mot ne peut pas être cherché comme une adresse : on le dit et on s'arrête.
@@ -278,6 +293,16 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
   present(snapshot) {
     const data = snapshot.data;
     if (!data) throw new Error('Aucun trajet à présenter.');
+    if (data.kind === 'attente')
+      return {
+        title: 'En voiture',
+        primaryValue: 'Où ?',
+        subtitle: 'Dites le départ et l’arrivée',
+        description: null,
+        items: [],
+        summary: data.message,
+        sources: ['OpenStreetMap', 'OSRM'],
+      };
     const stale = snapshot.status === 'stale';
     return {
       title: 'En voiture',
