@@ -171,16 +171,34 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
     const query = (context.query ?? '').trim();
     if (!query) throw new AddonCollectError('invalid_params', 'Précisez une destination.', false);
     const ends = bothEnds(query);
-    // « bureau » ou « domicile » renvoient aux réglages, pour ne pas épeler une adresse.
-    const named = (value: string, fallback: string | null): string => {
+    // « bureau » ou « domicile » renvoient aux réglages, pour ne pas épeler une adresse. Sans
+    // réglage, le mot ne peut pas être cherché comme une adresse : on le dit et on s'arrête.
+    const motSeul = (value: string): 'origine' | 'destination' | null => {
       const mot = fold(value);
-      if (['bureau', 'travail', 'boulot'].includes(mot))
-        return text(config.destination, 120) || value;
-      if (['domicile', 'maison', 'ici'].includes(mot)) return text(config.origine, 120) || value;
+      if (['bureau', 'travail', 'boulot'].includes(mot)) return 'destination';
+      if (['domicile', 'maison', 'ici'].includes(mot)) return 'origine';
+      return null;
+    };
+    const named = (value: string, fallback: string | null): string => {
+      const role = motSeul(value);
+      if (role === 'destination') return text(config.destination, 120) || value;
+      if (role === 'origine') return text(config.origine, 120) || value;
       return text(fallback, 120) || value;
     };
     const origin = named(ends ? ends.from : text(config.origine, 120), config.origine);
     const destination = named(ends ? ends.to : query, null);
+    if (motSeul(origin) === 'origine' && !text(config.origine, 120))
+      throw new AddonCollectError(
+        'config_invalid',
+        'Le mot « domicile » n’a pas d’adresse : dites le lieu de départ, ou renseignez le point de départ de la source.',
+        false,
+      );
+    if (motSeul(destination) === 'destination' && !text(config.destination, 120))
+      throw new AddonCollectError(
+        'config_invalid',
+        'Le mot « bureau » n’a pas d’adresse : dites la destination, ou renseignez la destination de la source.',
+        false,
+      );
     if (!origin)
       throw new AddonCollectError(
         'config_invalid',
