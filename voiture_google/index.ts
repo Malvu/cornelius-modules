@@ -17,8 +17,11 @@ type VoitureData = {
   vers: string;
   dureeMin: number;
   distanceKm: number;
-  /** Minutes ajoutées par le trafic, quand Google les donne. */
-  traficMin: number | null;
+  /**
+   * Durée hors trafic, quand Google la donne. Elle peut être *plus longue* que la durée réelle :
+   * la nuit, rouler à la vitesse réglementaire prend plus de temps que suivre le flot.
+   */
+  sansTraficMin: number | null;
 };
 
 const routesUrl = 'https://routes.googleapis.com/directions/v2:computeRoutes';
@@ -123,7 +126,7 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
   configSchema,
   configDefaults: { origine: null, destination: null },
   dataSchema,
-  dataVersion: 1,
+  dataVersion: 2,
   // Le trafic change vite, mais la question se pose une ou deux fois : deux minutes suffisent.
   freshMs: 2 * 60_000,
   secrets: [
@@ -230,10 +233,9 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
     const distance = Number(route?.distanceMeters);
     if (!Number.isFinite(avecTrafic) || !Number.isFinite(distance))
       throw new AddonCollectError('malformed', 'Google n’a pas donné de durée.', false);
-    // Le trafic fait partie de la réponse : c'est la durée annoncée, pas un supplément à ajouter.
-    const traficMin = Number.isFinite(base)
-      ? Math.min(1440, Math.max(0, Math.round((avecTrafic - base) / 60)))
-      : null;
+    // La durée annoncée contient le trafic ; la durée statique est l'estimation à trafic nul.
+    // Elle peut être plus longue — la nuit, rouler à la vitesse réglementaire prend plus de temps.
+    const sansTraficMin = Number.isFinite(base) ? Math.min(1440, minutes(base)) : null;
     return {
       data: {
         kind: 'trajet' as const,
@@ -241,7 +243,7 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
         vers: destination.slice(0, 120),
         dureeMin: Math.min(1440, minutes(avecTrafic)),
         distanceKm: Math.round(distance / 100) / 10,
-        traficMin,
+        sansTraficMin,
       },
       source: {
         provider: 'google-routes',
@@ -256,12 +258,16 @@ const addon: AddonDefinition<VoitureConfig, VoitureData> = {
     const items = [
       { label: 'Distance', value: `${data.distanceKm.toFixed(1).replace('.', ',')} km` },
     ];
-    if (data.traficMin !== null && data.traficMin > 0)
-      items.push({ label: 'Trafic', value: `+${data.traficMin} min` });
+    // La comparaison n'a de sens que si les deux durées diffèrent vraiment.
+    const ecart = data.sansTraficMin === null ? 0 : data.dureeMin - data.sansTraficMin;
+    if (data.sansTraficMin !== null && Math.abs(ecart) >= 2)
+      items.push({ label: 'Sans trafic', value: `${data.sansTraficMin} min` });
     const trafic =
-      data.traficMin !== null && data.traficMin > 0
-        ? `, dont ${data.traficMin} minutes de trafic`
-        : '';
+      data.sansTraficMin !== null && ecart >= 2
+        ? `, dont ${ecart} minutes de trafic`
+        : data.sansTraficMin !== null && ecart <= -2
+          ? `, ${-ecart} minutes de moins qu’à trafic nul`
+          : '';
     return {
       title: 'En voiture',
       primaryValue: `${data.dureeMin} min`,

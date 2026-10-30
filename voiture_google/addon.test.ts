@@ -37,7 +37,7 @@ test('un trajet donne la durée, la distance et le trafic', async (t) => {
   assert.equal(invoked.outcome.card.subtitle, 'Domicile, Lausanne → Genève');
   assert.deepEqual(invoked.outcome.card.items, [
     { label: 'Distance', value: '62,0 km' },
-    { label: 'Trafic', value: '+8 min' },
+    { label: 'Sans trafic', value: '40 min' },
   ]);
   assert.match(invoked.outcome.presentation.summary, /dont 8 minutes de trafic/u);
   assert.deepEqual(f.contract(invoked.outcome), []);
