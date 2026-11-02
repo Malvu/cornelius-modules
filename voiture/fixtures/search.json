@@ -1,0 +1,14 @@
+{
+  "results": [
+    {
+      "id": 1,
+      "weight": 100,
+      "attrs": {
+        "label": "Avenue de Chailly 1 <b>1012 Lausanne</b>",
+        "lat": 46.52674102783203,
+        "lon": 6.65183162689209,
+        "detail": "address"
+      }
+    }
+  ]
+}
