@@ -226,7 +226,11 @@ test('un arrêt inconnu est dit tel quel, sans interroger le flux', async (t) =>
   if (invoked.outcome.ok) return;
   assert.equal(invoked.outcome.error.code, 'not_found');
   assert.match(invoked.outcome.error.message, /Aucun arrêt « Nulle-Part » trouvé à Lausanne/u);
-  assert.equal(f.calls.length, 1);
+  // Plusieurs recherches d'arrêt sont tentées (ville, pays, gare centrale), jamais le flux.
+  assert.equal(
+    f.calls.some((call) => call.url.includes('/stationboard')),
+    false,
+  );
 });
 
 test('une question vide ne part pas', async (t) => {
@@ -342,4 +346,22 @@ test('un arrêt sans départ affiche une carte, sans lever d’exception', async
   assert.equal(result.card.primaryValue, 'Aucun départ');
   assert.match(result.presentation.summary, /Aucun départ prévu/u);
   assert.deepEqual(f.contract(result), []);
+});
+
+test('un nom de ville inconnu de la ville réglée donne la gare de cette ville', async (t) => {
+  const f = setup(t, { ville: 'Lausanne', arret: 'Lausanne, Chailly-Village' });
+  // La recherche préfixée par la ville ne rend que des arrêts lausannois ; la seconde, sans
+  // préfixe, trouve la gare de Sion : c'est la réponse utile quand on nomme une ville.
+  f.route({
+    '/locations': (request) =>
+      request.url.includes('Lausanne+Sion')
+        ? { stations: [{ id: '8588440', name: 'Lausanne, Ouchy-Olympique' }] }
+        : { stations: [{ id: '8501500', name: 'Sion' }] },
+  });
+  const invoked = await f.invoke('ask', { query: 'Sion' });
+  assert.equal(invoked.outcome.ok, true);
+  if (!invoked.outcome.ok) return;
+  // Le flux est ensuite demandé sur l'arrêt trouvé, celui de Sion.
+  assert.ok(f.calls.some((call) => call.url.includes('id=8501500')));
+  assert.deepEqual(f.contract(invoked.outcome), []);
 });

@@ -388,8 +388,45 @@ async function findAnywhere(
   ville: string,
   name: string,
 ): Promise<Station | null> {
+  const found =
+    (await findStop(context, ville, name)) ?? (ville ? await findStop(context, '', name) : null);
+  // Nom de localité inconnu des arrêts : on propose la gare centrale de la ville.
+  return found ?? centralStop(context, name);
+}
+
+/**
+ * Gare principale d'une localité : l'arrêt qui porte exactement son nom (« Sion »), sinon
+ * « Ville, gare » ou son équivalent alémanique. C'est la réponse utile quand la personne nomme
+ * une ville sans connaître ses arrêts.
+ */
+async function centralStop(context: CollectContext, name: string): Promise<Station | null> {
+  // Une demande déjà précise (« Sion, gare ») ne se rabat pas sur autre chose.
+  if (name.includes(',')) return null;
+  const params = new URLSearchParams({ query: name, type: 'station', limit: '20' });
+  const response = await context.http.fetch({
+    url: `${locationsUrl}?${params.toString()}`,
+    method: 'GET',
+    signal: context.signal,
+    timeoutMs: 8000,
+    maxBytes: 128 * 1024,
+  });
+  if (response.status !== 200) return null;
+  const payload = payloadOf(response);
+  if (!validateLocations(payload) || !Array.isArray(payload.stations)) return null;
+  const all = payload.stations
+    .map((entry) => ({ id: text(entry.id, 40) || null, name: text(entry.name, 80) }))
+    .filter((entry) => entry.name.length > 0);
+  const wanted = fold(name);
+  if (!wanted) return null;
+  const exact = all.find((entry) => fold(entry.name) === wanted);
+  if (exact) return exact;
   return (
-    (await findStop(context, ville, name)) ?? (ville ? await findStop(context, '', name) : null)
+    all.find((entry) => {
+      const libelle = fold(entry.name);
+      return (
+        libelle.startsWith(`${wanted} `) && /\b(gare|bahnhof|poste|platz|centre)\b/u.test(libelle)
+      );
+    }) ?? null
   );
 }
 
@@ -817,7 +854,9 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
     }
 
     // Un seul lieu : ou bien l'arrêt demandé, ou bien la destination depuis l'arrêt habituel.
-    const stop = await findStop(context, ville, query);
+    // `findAnywhere` essaie la ville réglée, puis tout le pays, et se rabat sur la gare centrale
+    // quand le nom est une localité sans arrêt homonyme.
+    const stop = await findAnywhere(context, ville, query);
     if (!stop)
       throw new AddonCollectError('not_found', `Aucun arrêt « ${query} » trouvé ${ou}.`, false);
     const board = await departuresOf(context, stop, now);
