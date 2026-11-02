@@ -96,18 +96,26 @@ function fold(value: string): string {
 }
 
 /**
- * swisstopo entoure la localité de balises `<b>` : on les retire, comme les entités HTML, pour
- * que la carte affiche une adresse lisible.
+ * swisstopo entoure la localité de balises `<b>` : la balise devient une virgule, on retire le
+ * code postal, et la carte affiche « Avenue de Chailly 1, Lausanne » plutôt qu'une suite de
+ * chiffres qui ne dit rien à personne.
  */
 function plainLabel(raw: string): string {
-  return raw
-    .replace(/<[^>]*>/gu, '')
-    .replace(/&amp;/gu, '&')
-    .replace(/&quot;/gu, '"')
-    .replace(/&apos;/gu, "'")
-    .replace(/&#(\d+);/gu, (_, code: string) => String.fromCodePoint(Number(code)))
-    .replace(/\s+/gu, ' ')
-    .trim();
+  return (
+    raw
+      .replace(/<b>/gu, ', ')
+      .replace(/<[^>]*>/gu, '')
+      // Un code postal suisse fait quatre chiffres, collé devant la localité.
+      .replace(/\b\d{4}\b/gu, ' ')
+      .replace(/&amp;/gu, '&')
+      .replace(/&quot;/gu, '"')
+      .replace(/&apos;/gu, "'")
+      .replace(/&#(\d+);/gu, (_, code: string) => String.fromCodePoint(Number(code)))
+      .replace(/\s*,\s*/gu, ', ')
+      .replace(/^,\s*/u, '')
+      .replace(/\s+/gu, ' ')
+      .trim()
+  );
 }
 
 /**
