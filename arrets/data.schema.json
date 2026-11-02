@@ -5,6 +5,15 @@
     {
       "type": "object",
       "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "const": "attente" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
       "required": ["kind", "depuis", "vers", "limite", "margeMin", "trajets"],
       "properties": {
         "kind": { "const": "echeance" },

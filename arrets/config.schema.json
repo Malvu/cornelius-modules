@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": ["ville", "arret", "limite"],
+  "required": ["ville", "limite"],
   "properties": {
     "ville": {
       "title": "Ville",
@@ -14,10 +14,8 @@
     "arret": {
       "title": "Arrêt habituel",
       "description": "L'arrêt lu par « mon bus », sans le nommer. Nom exact tel que le donne la recherche, par exemple « Lausanne, Chailly-Village ».",
-      "type": "string",
-      "minLength": 1,
+      "type": ["string", "null"],
       "maxLength": 80,
-      "pattern": "^\\S",
       "examples": ["Lausanne, Chailly-Village"]
     },
     "bureau": {

@@ -59,7 +59,9 @@ type ArretsData =
       limite: string;
       margeMin: number;
       trajets: Trajet[];
-    };
+    }
+  /** Une source sans arrêt réglé attend qu'on lui dise où aller. */
+  | { kind: 'attente'; message: string };
 
 /** Ce qu'on retient d'un départ du flux, avant regroupement par ligne et direction. */
 type Depart = {
@@ -439,7 +441,8 @@ async function locate(
   const params = new URLSearchParams({
     // Sans ville, la recherche porte sur toute la Suisse : c'est l'API qui classe les résultats.
     query: ville ? `${ville} ${query}`.trim() : query,
-    type: 'station',
+    // `all` ramène aussi les adresses et les points d'intérêt : « Avenue de Chailly 1 » marche.
+    type: 'all',
     limit: '20',
   });
   const response = await context.http.fetch({
@@ -731,10 +734,18 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
     const limite = Math.min(12, Math.max(3, Math.round(context.config.limite)));
     const now = context.now();
     const habitual = text(context.config.arret, 80);
-    if (!habitual)
-      throw new AddonCollectError('config_invalid', 'Indiquez un arrêt à surveiller.', false);
 
     if (context.query === undefined) {
+      // Sans arrêt habituel réglé, la source ne peut rien lire toute seule : elle dit quoi
+      // demander, au lieu de refuser d'exister.
+      if (!habitual)
+        return {
+          data: {
+            kind: 'attente' as const,
+            message: 'Dites un lieu : « Bel-Air », ou « de Chailly à Ouchy ».',
+          },
+          empty: true,
+        };
       // Lecture ordinaire : l'arrêt habituel, sans recherche.
       const board = await departuresOf(context, { id: null, name: habitual }, now);
       const lignes = groupLines(board.departures, limite);
@@ -870,6 +881,16 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
   present(snapshot, context) {
     const data = snapshot.data;
     if (!data) throw new Error('Aucun arrêt à présenter.');
+    if (data.kind === 'attente')
+      return {
+        title: 'Arrêts',
+        primaryValue: 'Où ?',
+        subtitle: 'Dites un lieu ou un trajet',
+        description: null,
+        items: [],
+        summary: data.message,
+        sources: ['transport.opendata.ch'],
+      };
     const stale = snapshot.status === 'stale';
 
     if (data.kind === 'trajet') {
