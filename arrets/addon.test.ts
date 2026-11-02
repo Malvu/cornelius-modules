@@ -277,7 +277,7 @@ test('une heure d’arrivée donne le dernier départ utile et la marge', async 
   );
   assert.deepEqual(invoked.outcome.card.items[0], {
     label: '00:41 → 01:02',
-    value: '21 min · 1 correspondance · B 7, m2',
+    value: '21 min · 1 correspondance · changement à Lausanne, Ours, 5 min',
   });
   // Arrivée à 01:02 pour une échéance de 01:30 : vingt-huit minutes d'avance.
   assert.match(invoked.outcome.presentation.summary, /28 minutes d’avance/u);

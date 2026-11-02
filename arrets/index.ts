@@ -962,23 +962,63 @@ const addon: AddonDefinition<ArretsConfig, ArretsData> = {
       if (!premier) throw new Error('Aucun départ à présenter.');
       // La carte met l'heure de départ en grand : c'est la seule chose qu'on retient d'un coup
       // d'œil le matin. Les autres propositions restent lisibles en une ligne chacune.
-      const items = data.trajets.slice(0, 3).map((trajet) => ({
-        label: `${clock(trajet.depart, context.timeZone)} → ${clock(trajet.arrive, context.timeZone)}`,
-        value: [
-          `${trajet.dureeMin} min`,
-          trajet.correspondances === 0
-            ? 'direct'
-            : `${trajet.correspondances} correspondance${trajet.correspondances > 1 ? 's' : ''}`,
-          trajet.lignes.join(', '),
-        ]
-          .filter(Boolean)
-          .join(' · ')
-          .slice(0, 160),
-      }));
+      // Les changements, dans l'ordre : l'arrêt où l'on descend du véhicule, et l'attente avant
+      // le suivant. On ne regarde que les véhicules : un tronçon à pied entre deux quais n'est
+      // pas un changement, c'est le chemin pour les rejoindre.
+      const changements = (trajet: Trajet) => {
+        const vehicles = trajet.etapes.filter((etape) => !etape.ligne.startsWith('À pied'));
+        const listes: { gare: string; attenteMin: number }[] = [];
+        for (let index = 1; index < vehicles.length; index += 1) {
+          const avant = vehicles[index - 1]!;
+          const apres = vehicles[index]!;
+          const attente = Math.max(
+            0,
+            Math.round(
+              (new Date(apres.depart).getTime() - new Date(avant.arrive).getTime()) / 60_000,
+            ),
+          );
+          listes.push({ gare: avant.vers, attenteMin: attente });
+        }
+        return listes;
+      };
+      const items = data.trajets.slice(0, 3).map((trajet) => {
+        const changes = changements(trajet);
+        const detail = changes
+          .map(
+            (change) =>
+              `changement à ${change.gare}${
+                change.attenteMin > 0 ? `, ${change.attenteMin} min` : ''
+              }`,
+          )
+          .join(' puis ');
+        return {
+          label: `${clock(trajet.depart, context.timeZone)} → ${clock(trajet.arrive, context.timeZone)}`,
+          value: [
+            `${trajet.dureeMin} min`,
+            trajet.correspondances === 0
+              ? 'direct'
+              : `${trajet.correspondances} correspondance${trajet.correspondances > 1 ? 's' : ''}`,
+            detail || trajet.lignes.join(', '),
+          ]
+            .filter(Boolean)
+            .join(' · ')
+            .slice(0, 160),
+        };
+      });
+      const changesPremier = changements(premier);
       const correspondances =
         premier.correspondances === 0
           ? 'sans correspondance'
-          : `avec ${premier.correspondances} correspondance${premier.correspondances > 1 ? 's' : ''}`;
+          : `avec ${premier.correspondances} correspondance${premier.correspondances > 1 ? 's' : ''}${
+              changesPremier.length > 0
+                ? `, changement à ${changesPremier
+                    .map(
+                      (change) =>
+                        `${change.gare}${change.attenteMin > 0 ? ` (${change.attenteMin} min d’attente)` : ''}`,
+                    )
+                    .join(' puis à ')}`
+                : ''
+            }`;
       const marge =
         data.margeMin > 0
           ? `${data.margeMin} minute${data.margeMin > 1 ? 's' : ''} d’avance sur l’échéance de ${data.limite}`
